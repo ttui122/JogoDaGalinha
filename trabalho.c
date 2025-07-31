@@ -7,11 +7,12 @@ typedef struct{
 
     int vida;
     int posX;
-    int posY; // prossivelmente tirar
+    int posY; // prossivelmente tirar, calcular a partir da pista
     int pista;
     char matriz[2][3];
 
 } tGalinha;
+tGalinha LeGalinha(char * configFile, char * personagemFile);
 
 //Carros
 typedef struct{
@@ -19,7 +20,7 @@ typedef struct{
     int velocidade;
     int pista;
     int posX;
-    int posY; // possivelmenete tirar
+    int posY; // possivelmenete tirar, calcular a partir da pista
     int index; 
     char direcao;
     char matriz[2][3];
@@ -29,6 +30,7 @@ typedef struct{
 //Jogo
 typedef struct{
 
+    int pontos;
     int iteracao;
     int numMovimentos;
     int numMovParaTras;
@@ -40,15 +42,27 @@ typedef struct{
     int animacao;
     
 } tDados;
+void ValidaArquivos(int argc, char * argv);
+void LeArquivo(char * conteudo, char * caminho, char * arquivo);
 
-int main(int argc, char * argv[1001]){
+int main(int argc, char * argv[]){
+
+    char conteudoArquivoConfig[1000];
+    char arquivoConfig[] = "/config_inicial.txt";
+
+    char conteudoArquivoPersonagens[1000];
+    char arquivoPersonagens[] = "/personagens.txt";
+
+    ValidaArquivos(argc, argv[1]); // Não ta validando
+
+    LeArquivo(conteudoArquivoConfig, argv[1], arquivoConfig);
+    LeArquivo(conteudoArquivoPersonagens, argv[1], arquivoPersonagens);
+
+    tGalinha galinha = LeGalinha(conteudoArquivoConfig, conteudoArquivoPersonagens);
     
-    if (argc <= 1) {
-        printf("ERRO: Informe o diretorio com os arquivos de configuracao.");
-        exit(1);
-    }
 
-    tGalinha galinha;
+    //####################### CORRIGIR A PARTIR DE NOVA INTERPRETAÇÂO ######################//
+    /* tGalinha galinha;
     tCarro carros[120];
     tCarro carroBase;
     tDados dados;
@@ -60,17 +74,33 @@ int main(int argc, char * argv[1001]){
     int idxVetor = 0;
     int i, j;
     char letra;
-    //int qtdCarrosTotal = 0; // para depurar, remover depois
+    //int qtdCarrosTotal = 0; // para depurar, remover depois]] 
+    
+    char diretorio[1100];
+
+    strcpy(diretorio, argv[1]);
+
+    char diretorio_config[1100];   // Adicionar no validar diretorio máximo de 1000 caracteres o diretorio
+    char diretorio_personagens[1100];
+
+    strcpy(diretorio_config, diretorio);
+    strcpy(diretorio_personagens, diretorio);
+
+    char arquivo_config[] = "/config_inicial.txt";
+    strcat(diretorio_config, arquivo_config);
+
+    char arquivo_personagens[] = "/personagens.txt";
+    strcat(diretorio_personagens, arquivo_personagens);
     
     FILE * config_inicial;
     FILE * personagens;
     
-    config_inicial = fopen("config_inicial.txt", "r");   // não sei como informar o diretorio
+    config_inicial = fopen(diretorio_config, "r");   // não sei como informar o diretorio
 
     if (!config_inicial){
 
         printf("Erro ao abrir o arquivo ""config_inicial.txt"" no diretorio: %s", argv[1]);
-        return 1;
+        exit(1);
 
     }
     else {
@@ -81,7 +111,7 @@ int main(int argc, char * argv[1001]){
         /* printf("Dados da Animação: %d\n", dados.animacao);
         printf("COLUNAS: %d | PISTAS: %d\n", dados.colunas, dados.qtdPistas); */
         
-        fscanf(config_inicial, "%c", &lixo);
+        /* fscanf(config_inicial, "%c", &lixo);
 
 
         while (pistaAtual < dados.qtdPistas-1){
@@ -115,6 +145,8 @@ int main(int argc, char * argv[1001]){
 
         fscanf(config_inicial, "%c %d %d", &letra, &galinha.posX, &galinha.vida); // linha da galinha
 
+        // ############## DEPURAÇÂO ################
+
         /* printf("Letra galinha: %c\n", letra);
 
         printf("##############\nGALINHA:\nVida: %d | posX: %d\nCARROS:\n", galinha.vida, galinha.posX);
@@ -122,17 +154,19 @@ int main(int argc, char * argv[1001]){
             printf("velocidade: %d | posX: %d | pista: %d | direcao: %c | index: %d\n", carros[i].velocidade, carros[i].posX, carros[i].pista, carros[i].direcao, carros[i].index);
         }
         printf("Pista Atual: %d\n", pistaAtual);
-        printf ("%d", idxVetor); */
+        printf ("%d", idxVetor); 
+        
+        #############################################*/
 
-    }    
+   /*  }    
     
     fclose(config_inicial);
     
-    personagens = fopen("personagens.txt", "r");    // não sei como informar o diretorio
+    personagens = fopen(diretorio_personagens, "r");    // não sei como informar o diretorio
     if (!personagens){
 
         printf("Erro ao abrir o arquivo ""personagens.txt"" no diretorio: %s", argv[1]);
-        return 1;
+        exit(1);
         
     }
     else {
@@ -178,6 +212,89 @@ int main(int argc, char * argv[1001]){
     
     fclose(personagens);
 
-    return 0;
+    return 0; */
     
+}
+
+void LeArquivo(char * conteudo, char * caminho, char * arquivo){
+    char c;
+    int i = 0;
+    
+    char diretorio[1100];
+    strcpy(diretorio, caminho);
+
+    char diretorio_completo[1100];   // Talvez duas copias seja inutil, verificar
+
+    strcpy(diretorio_completo, diretorio);
+
+    strcat(diretorio_completo, arquivo);
+    
+    FILE * file;
+
+    file = fopen(diretorio_completo, "r");
+
+    while (fscanf(file, "%c", &c) != EOF && i < 999){
+        conteudo[i] = c;
+        i++;
+    }
+
+    conteudo[i] = '\0';
+
+    fclose(file);
+
+}
+
+void ValidaArquivos(int argc, char * argv){
+    
+    
+    if (argc == 1) {
+        printf("ERRO: Informe o diretorio com os arquivos de configuracao.");
+        exit(1);
+    }
+    
+    int comprimento = strlen(argv);
+    
+    if (comprimento > 1000) {
+        printf("ERRO: Diretorio inválido (mais de 1000 caracteres)");
+    }
+
+
+    char diretorio[1100];
+
+    strcpy(diretorio, argv);
+
+    char diretorio_config[1100];   
+    char diretorio_personagens[1100];
+
+    strcpy(diretorio_config, diretorio);
+    strcpy(diretorio_personagens, diretorio);
+
+    char arquivo_config[] = "/config_inicial.txt";
+    strcat(diretorio_config, arquivo_config);
+
+    char arquivo_personagens[] = "/personagens.txt";
+    strcat(diretorio_personagens, arquivo_personagens);
+
+    FILE * config_inicial;
+    FILE * personagens;
+    
+    config_inicial = fopen(diretorio_config, "r");   // não sei como informar o diretorio
+    if (!config_inicial){
+
+        printf("Erro ao abrir o arquivo ""config_inicial.txt"" no diretorio: %s", argv);
+        exit(1);
+
+    }
+    
+    fclose(config_inicial);
+
+    personagens = fopen(diretorio_personagens, "r");    // não sei como informar o diretorio
+    if (!personagens){
+
+        printf("Erro ao abrir o arquivo ""personagens.txt"" no diretorio: %s", argv);
+        exit(1);
+        
+    }
+    
+    fclose(personagens);
 }
