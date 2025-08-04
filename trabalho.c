@@ -26,8 +26,9 @@ typedef struct{
     char matriz[2][3];
 
 } tCarro;
+tCarro LeCarro(char * configFile, char * personagemFile);
 
-//Jogo
+//Dados
 typedef struct{
 
     int pontos;
@@ -42,23 +43,39 @@ typedef struct{
     int animacao;
     
 } tDados;
-void ValidaArquivos(int argc, char * argv);
-void LeArquivo(char * conteudo, char * caminho, char * arquivo);
+tDados LeDados(char * configFile);
+
+//Jogo
+typedef struct{
+
+    int heatmap[35][100];
+    char mapaBase[35][100];
+    tDados dados;
+    tGalinha galinha;
+    tCarro carros[120];
+
+} tJogo;
+void InicializarMapaBase(int linhas, int colunas, char mapa[linhas][colunas]); // vai ir dentro da função InicializarJogo
+void PreencheMapa(int linhas, int colunas, char mapa[linhas][colunas]);
+void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]);
+void AtualizaTela(tJogo jogo, int linhas, int colunas, char mapaBase[linhas][colunas]);
+
+//Validacao dos Arquivos
+void Validacao(char * argv, int argc);
+void ValidaArquivos(int argc, char * argv, char * diretorio_config, char * diretorio_personagens);
+void LeArquivo(char * conteudo,char * diretorio_completo);
+void geraCaminhoCompleto(char * diretorio, char * arquivo, char * caminho);
 
 int main(int argc, char * argv[]){
+    tJogo jogo;
 
-    char conteudoArquivoConfig[1000];
-    char arquivoConfig[] = "/config_inicial.txt";
+    //Validacao(argv[1], argc);
 
-    char conteudoArquivoPersonagens[1000];
-    char arquivoPersonagens[] = "/personagens.txt";
+    GerarMapaBase(14, 45, jogo.mapaBase);
+    ImprimeMapa(4, 3, 10, 14, 45, jogo.mapaBase);
 
-    ValidaArquivos(argc, argv[1]); // Não ta validando
-
-    LeArquivo(conteudoArquivoConfig, argv[1], arquivoConfig);
-    LeArquivo(conteudoArquivoPersonagens, argv[1], arquivoPersonagens);
-
-    tGalinha galinha = LeGalinha(conteudoArquivoConfig, conteudoArquivoPersonagens);
+    //tDados dados = LeDados(conteudoArquivoConfig);
+    //tGalinha galinha = LeGalinha(conteudoArquivoConfig, conteudoArquivoPersonagens);
     
 
     //####################### CORRIGIR A PARTIR DE NOVA INTERPRETAÇÂO ######################//
@@ -74,23 +91,7 @@ int main(int argc, char * argv[]){
     int idxVetor = 0;
     int i, j;
     char letra;
-    //int qtdCarrosTotal = 0; // para depurar, remover depois]] 
-    
-    char diretorio[1100];
-
-    strcpy(diretorio, argv[1]);
-
-    char diretorio_config[1100];   // Adicionar no validar diretorio máximo de 1000 caracteres o diretorio
-    char diretorio_personagens[1100];
-
-    strcpy(diretorio_config, diretorio);
-    strcpy(diretorio_personagens, diretorio);
-
-    char arquivo_config[] = "/config_inicial.txt";
-    strcat(diretorio_config, arquivo_config);
-
-    char arquivo_personagens[] = "/personagens.txt";
-    strcat(diretorio_personagens, arquivo_personagens);
+    //int qtdCarrosTotal = 0; // para depurar, remover depois
     
     FILE * config_inicial;
     FILE * personagens;
@@ -216,18 +217,81 @@ int main(int argc, char * argv[]){
     
 }
 
-void LeArquivo(char * conteudo, char * caminho, char * arquivo){
+void AtualizaTela(tJogo jogo, int linhas, int colunas, char mapaBase[linhas][colunas]){
+    char mapaLocal[linhas][colunas];
+
+    PreencheMapa(linhas, colunas, mapaLocal);
+    ImprimeMapa(jogo.dados.pontos, jogo.galinha.vida, jogo.dados.iteracao, linhas, colunas, mapaBase);
+
+}
+
+void InicializarMapaBase(int linhas, int colunas, char mapa[linhas][colunas]){
+    int i, j;
+
+    for (i = 0; i < linhas; i++){
+        for (j = 0; j < colunas; j++){
+            if ((i+1) % 3 == 0 && (j+1) % 3 != 0) mapa[i][j] = '-';
+            else mapa[i][j] = ' ';
+        }
+    }
+}
+
+void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]){
+    int i, j;
+
+    printf("Pontos: %d | Vidas: %d | Iteracoes: %d\n", pontos, vidas, iteracoes);
+
+    for (j = 0; j < colunas+2; j++){
+        if (j == 0 || j == colunas+1) printf("|");
+        else printf("-");
+    }
+
+    printf("\n");
+
+    for (i = 0; i < linhas; i++){
+        for (j = 0; j < colunas+2; j++){
+            if (j == 0 || j == colunas+1) printf("|");
+            else printf("%c", mapa[i][j-1]);
+        }
+        printf("\n");
+    }
+
+    for (j = 0; j < colunas+2; j++){
+        if (j == 0 || j == colunas+1) printf("|");
+        else printf("-");
+    }
+}
+
+tDados LeDados(char * configFile){
+    tDados dados;
+
+    sscanf(configFile, "%d\n%d %d\n", &dados.animacao, &dados.colunas, &dados.qtdPistas);
+
+    return dados;
+}
+
+//############## VALIDACAO DE ARQUIVOS ##############
+void Validacao(char * argv, int argc){
+    char caminhoConfig[1100];
+    char caminhoPersonagens[1100];
+    
+    char arquivoConfig[] = "/config_inicial.txt";
+    char arquivoPersonagens[] = "/personagens.txt";
+
+    geraCaminhoCompleto(argv, arquivoConfig, caminhoConfig);
+    geraCaminhoCompleto(argv, arquivoPersonagens, caminhoPersonagens);
+
+    ValidaArquivos(argc, argv, caminhoConfig, caminhoPersonagens);
+}
+void geraCaminhoCompleto(char * diretorio, char * arquivo, char * caminho){
+
+    strcpy(caminho, diretorio);
+    strcat(caminho, arquivo);
+
+}
+void LeArquivo(char * conteudo, char * diretorio_completo){
     char c;
     int i = 0;
-    
-    char diretorio[1100];
-    strcpy(diretorio, caminho);
-
-    char diretorio_completo[1100];   // Talvez duas copias seja inutil, verificar
-
-    strcpy(diretorio_completo, diretorio);
-
-    strcat(diretorio_completo, arquivo);
     
     FILE * file;
 
@@ -243,9 +307,7 @@ void LeArquivo(char * conteudo, char * caminho, char * arquivo){
     fclose(file);
 
 }
-
-void ValidaArquivos(int argc, char * argv){
-    
+void ValidaArquivos(int argc, char * argv, char * diretorio_config, char * diretorio_personagens){
     
     if (argc == 1) {
         printf("ERRO: Informe o diretorio com os arquivos de configuracao.");
@@ -257,23 +319,6 @@ void ValidaArquivos(int argc, char * argv){
     if (comprimento > 1000) {
         printf("ERRO: Diretorio inválido (mais de 1000 caracteres)");
     }
-
-
-    char diretorio[1100];
-
-    strcpy(diretorio, argv);
-
-    char diretorio_config[1100];   
-    char diretorio_personagens[1100];
-
-    strcpy(diretorio_config, diretorio);
-    strcpy(diretorio_personagens, diretorio);
-
-    char arquivo_config[] = "/config_inicial.txt";
-    strcat(diretorio_config, arquivo_config);
-
-    char arquivo_personagens[] = "/personagens.txt";
-    strcat(diretorio_personagens, arquivo_personagens);
 
     FILE * config_inicial;
     FILE * personagens;
