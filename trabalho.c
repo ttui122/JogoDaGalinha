@@ -11,8 +11,10 @@ typedef struct{
     char matriz[2][3];
 
 } tGalinha;
-tGalinha LeGalinha(FILE * config_inicial);
+tGalinha LeGalinha(FILE * config_inicial, tGalinha galinha);
 tGalinha LeMatrizGalinha(FILE * personagens);
+
+
 
 //Carros
 typedef struct{
@@ -27,6 +29,8 @@ typedef struct{
 } tCarro;
 tCarro LeCarro(FILE * config_inicial, int pistaAtual, tCarro carroBase, int index);
 tCarro LeMatrizCarro(FILE * personagens, int animacao);
+
+
 
 //Dados
 typedef struct{
@@ -45,26 +49,33 @@ typedef struct{
 } tDados;
 tDados LeDados(FILE * config_inicial);
 
+
+
 //Jogo
 typedef struct{
 
     int heatmap[35][100];
-    char mapaBase[35][100];
     tDados dados;
     tGalinha galinha;
     tCarro carros[120];
 
 } tJogo;
-void InicializarMapaBase(int linhas, int colunas, char mapa[linhas][colunas]); // vai ir dentro da função InicializarJogo
+tJogo InicializarJogo(FILE *config_inicial, FILE *personagens);
+tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens);
+tJogo InicializarMapaBase(tJogo jogo); // vai ir dentro da função InicializarJogo
+void InicializaMapaLocal(int linhas, int colunas,char mapa[linhas][colunas]);
+void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][colunas]);
 //void PreencheMapa(int linhas, int colunas, char mapa[linhas][colunas]);
 void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]);
-void AtualizaTela(tJogo jogo, int linhas, int colunas, char mapaBase[linhas][colunas]);
-tJogo LeArquivosJogo(FILE *config_inicial, FILE *personagens);
+
+
 
 //Validacao dos Arquivos
 void geraCaminhoCompletoArquivos(char * diretorio, char * arquivo, char * caminho);
 void AbreArquivos(char * argv, FILE **config_inicial, FILE **personagens);
 void ValidaArquivos(int argc, char * argv, FILE *config_inicial, FILE *personagens);
+
+
 
 int main(int argc, char * argv[]){
     tJogo jogo;
@@ -80,19 +91,29 @@ int main(int argc, char * argv[]){
 
     ValidaArquivos(argc, argv[1], config_inicial, personagens);
 
-    jogo = LeArquivosJogo(config_inicial, personagens);
+    jogo = InicializarJogo(config_inicial, personagens);
 
-    //InicializarMapaBase(14, 45, jogo.mapaBase);
-    //ImprimeMapa(4, 3, 10, 14, 45, jogo.mapaBase);  
-      
+    /* while (!TerminarJogo()){
+
+        ContinuarJogo();
+
+    }
+
+    GerarArquivoEstatistica();
+    GerarArquivoResumo();
+    GerarArquivoRanking();
+    GerarArquivoHeatmap(); */
+
 }
 
+
+
 //############## LEITURA DOS ARQUIVOS ###############
-tJogo LeArquivosJogo(FILE *config_inicial, FILE *personagens){
+tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens){
     
     tJogo jogo;
 
-    jogo.galinha = LeMatrizGalinha(personagens);
+    tGalinha galinhaMatriz = LeMatrizGalinha(personagens);
 
     jogo.dados = LeDados(config_inicial);
     
@@ -135,7 +156,7 @@ tJogo LeArquivosJogo(FILE *config_inicial, FILE *personagens){
         } */
 
 
-    jogo.galinha = LeGalinha(config_inicial);
+    jogo.galinha = LeGalinha(config_inicial, galinhaMatriz);
 
     fclose(config_inicial);
     fclose(personagens);
@@ -158,16 +179,18 @@ tDados LeDados(FILE * config_inicial){
     return dados;
 
 }
-tGalinha LeGalinha(FILE * config_inicial){
+tGalinha LeGalinha(FILE * config_inicial, tGalinha galinha){
 
-    tGalinha galinha;
+    tGalinha galinhaL = galinha;
+    galinhaL.pista = 0;
+
     char letra;
 
-    fscanf(config_inicial, "%c %d %d", &letra, &galinha.posX, &galinha.vida);
+    fscanf(config_inicial, "%c %d %d", &letra, &galinhaL.posX, &galinhaL.vida);
 
-    //printf("----------------------------\nGALINHA:\nVida: %d | posX: %d\n", galinha.vida, galinha.posX);
+    //printf("----------------------------\nGALINHA:\nVida: %d | posX: %d\n", galinhaL.vida, galinhaL.posX);
 
-    return galinha;
+    return galinhaL;
 
 }
 tGalinha LeMatrizGalinha(FILE * personagens){
@@ -232,48 +255,123 @@ tCarro LeMatrizCarro(FILE * personagens, int animacao){
 }
 
 //############## GERENCIAMENTO DO MAPA ##############
-void AtualizaTela(tJogo jogo, int linhas, int colunas, char mapaBase[linhas][colunas]){
-    char mapaLocal[linhas][colunas];
+tJogo InicializarJogo(FILE *config_inicial, FILE *personagens){
+    
+    tJogo jogo;
 
-    //PreencheMapa(linhas, colunas, mapaLocal);
-    ImprimeMapa(jogo.dados.pontos, jogo.galinha.vida, jogo.dados.iteracao, linhas, colunas, mapaBase);
+    
+    jogo = LeArquivosJogo(config_inicial, personagens);
+    
+    jogo.dados.alturaMax = 0;
+    jogo.dados.alturaMaxMorte = 0;
+    jogo.dados.alturaMinMorte = 0;
+    jogo.dados.iteracao = 0;
+    jogo.dados.numMovimentos = 0;
+    jogo.dados.numMovParaTras = 0;
+    jogo.dados.pontos = 0;
+    
+    int linhas = 3 * jogo.dados.qtdPistas - 1;
+    char mapaInicialL[linhas][jogo.dados.colunas];
+
+    InicializaMapaLocal(linhas, jogo.dados.colunas, mapaInicialL);
+    PreencherMapa(jogo, linhas, jogo.dados.colunas, mapaInicialL);
+    ImprimeMapa(jogo.dados.pontos, jogo.galinha.vida, jogo.dados.iteracao, linhas, jogo.dados.colunas, mapaInicialL);
+    
+    //jogo = InicializarHeatmap(jogo);
+    //GerarArquivoInicializacao();
+
+    return jogo;
 
 }
-void InicializarMapaBase(int linhas, int colunas, char mapa[linhas][colunas]){
+void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][colunas]){
+    
+    int pistaAtual = 0;
+    int idxCarro = 0;
+    int i, j;
+    
+    
+    for (i = 0; i < linhas; i++){
+        
+        if ((i+1) % 3 == 0) {
+            pistaAtual++;
+            continue;
+        }
+
+        for (j = 0; j < colunas; j++){
+            
+
+            if (i == linhas-2 && j+1 == jogo.galinha.posX) {
+                
+                mapa[i][j-1] = jogo.galinha.matriz[0][0];
+                mapa[i][j] = jogo.galinha.matriz[0][1];
+                mapa[i][j+1] = jogo.galinha.matriz[0][2];      // não estou fazendo a checagem do limite
+                mapa[i+1][j-1] = jogo.galinha.matriz[1][0];
+                mapa[i+1][j] = jogo.galinha.matriz[1][1];
+                mapa[i+1][j+1] = jogo.galinha.matriz[1][2];
+
+            
+            }
+            else if (pistaAtual == jogo.carros[idxCarro].pista && i % 3 == 0 && j+1 == jogo.carros[idxCarro].posX) {
+           
+                mapa[i][j-1] = jogo.carros[idxCarro].matriz[0][0];
+                mapa[i][j] = jogo.carros[idxCarro].matriz[0][1];        // não estou fazendo a checagem do limite;
+                mapa[i][j+1] = jogo.carros[idxCarro].matriz[0][2];
+                mapa[i+1][j-1] = jogo.carros[idxCarro].matriz[1][0];
+                mapa[i+1][j] = jogo.carros[idxCarro].matriz[1][1];
+                mapa[i+1][j+1] = jogo.carros[idxCarro].matriz[1][2];
+
+                idxCarro++;
+                
+            } 
+        }
+    }
+    
+}
+void InicializaMapaLocal(int linhas, int colunas, char mapa[linhas][colunas]){
+    
     int i, j;
 
     for (i = 0; i < linhas; i++){
         for (j = 0; j < colunas; j++){
             if ((i+1) % 3 == 0 && (j+1) % 3 != 0) mapa[i][j] = '-';
             else mapa[i][j] = ' ';
+            //printf("%c", jogoL.mapaBase[i][j]);
         }
+        //printf("\n");
     }
+
 }
-void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]){
+void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]) { 
+    
     int i, j;
 
     printf("Pontos: %d | Vidas: %d | Iteracoes: %d\n", pontos, vidas, iteracoes);
 
-    for (j = 0; j < colunas+2; j++){
+    for (j = 0; j < colunas + 2; j++){
         if (j == 0 || j == colunas+1) printf("|");
         else printf("-");
     }
-
     printf("\n");
 
     for (i = 0; i < linhas; i++){
-        for (j = 0; j < colunas+2; j++){
+        for (j = 0; j < colunas + 2; j++){
             if (j == 0 || j == colunas+1) printf("|");
             else printf("%c", mapa[i][j-1]);
         }
         printf("\n");
     }
 
-    for (j = 0; j < colunas+2; j++){
-        if (j == 0 || j == colunas+1) printf("|");
-        else printf("-");
+    // linha inferior
+    for (j = 0; j < colunas + 2; j++) {
+        if (j == 0 || j == colunas+1) 
+            printf("|");
+        else 
+            printf("-");
     }
+    printf("\n");
+
 }
+
 
 //############## VALIDACAO DE ARQUIVOS ##############
 void AbreArquivos(char * argv, FILE **config_inicial, FILE **personagens){
