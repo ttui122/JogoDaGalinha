@@ -7,12 +7,12 @@ typedef struct{
 
     int vida;
     int posX;
-    int posY; // prossivelmente tirar, calcular a partir da pista
     int pista;
     char matriz[2][3];
 
 } tGalinha;
-tGalinha LeGalinha(char * configFile, char * personagemFile);
+tGalinha LeGalinha(FILE * config_inicial);
+tGalinha LeMatrizGalinha(FILE * personagens);
 
 //Carros
 typedef struct{
@@ -20,13 +20,13 @@ typedef struct{
     int velocidade;
     int pista;
     int posX;
-    int posY; // possivelmenete tirar, calcular a partir da pista
     int index; 
     char direcao;
     char matriz[2][3];
 
 } tCarro;
-tCarro LeCarro(char * configFile, char * personagemFile);
+tCarro LeCarro(FILE * config_inicial, int pistaAtual, tCarro carroBase, int index);
+tCarro LeMatrizCarro(FILE * personagens, int animacao);
 
 //Dados
 typedef struct{
@@ -43,7 +43,7 @@ typedef struct{
     int animacao;
     
 } tDados;
-tDados LeDados(char * configFile);
+tDados LeDados(FILE * config_inicial);
 
 //Jogo
 typedef struct{
@@ -56,175 +56,189 @@ typedef struct{
 
 } tJogo;
 void InicializarMapaBase(int linhas, int colunas, char mapa[linhas][colunas]); // vai ir dentro da função InicializarJogo
-void PreencheMapa(int linhas, int colunas, char mapa[linhas][colunas]);
+//void PreencheMapa(int linhas, int colunas, char mapa[linhas][colunas]);
 void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]);
 void AtualizaTela(tJogo jogo, int linhas, int colunas, char mapaBase[linhas][colunas]);
+tJogo LeArquivosJogo(FILE *config_inicial, FILE *personagens);
 
 //Validacao dos Arquivos
-void Validacao(char * argv, int argc);
-void ValidaArquivos(int argc, char * argv, char * diretorio_config, char * diretorio_personagens);
-void LeArquivo(char * conteudo,char * diretorio_completo);
-void geraCaminhoCompleto(char * diretorio, char * arquivo, char * caminho);
+void geraCaminhoCompletoArquivos(char * diretorio, char * arquivo, char * caminho);
+void AbreArquivos(char * argv, FILE **config_inicial, FILE **personagens);
+void ValidaArquivos(int argc, char * argv, FILE *config_inicial, FILE *personagens);
 
 int main(int argc, char * argv[]){
     tJogo jogo;
 
-    //Validacao(argv[1], argc);
-
-    GerarMapaBase(14, 45, jogo.mapaBase);
-    ImprimeMapa(4, 3, 10, 14, 45, jogo.mapaBase);
-
-    //tDados dados = LeDados(conteudoArquivoConfig);
-    //tGalinha galinha = LeGalinha(conteudoArquivoConfig, conteudoArquivoPersonagens);
-    
-
-    //####################### CORRIGIR A PARTIR DE NOVA INTERPRETAÇÂO ######################//
-    /* tGalinha galinha;
-    tCarro carros[120];
-    tCarro carroBase;
-    tDados dados;
-
-    char lixo;                  // talvez tenha que inicializar dentro do else
-
-    int pistaAtual = 0;
-    int qtdCarros;
-    int idxVetor = 0;
-    int i, j;
-    char letra;
-    //int qtdCarrosTotal = 0; // para depurar, remover depois
-    
     FILE * config_inicial;
     FILE * personagens;
-    
-    config_inicial = fopen(diretorio_config, "r");   // não sei como informar o diretorio
 
-    if (!config_inicial){
-
-        printf("Erro ao abrir o arquivo ""config_inicial.txt"" no diretorio: %s", argv[1]);
+    if (argc == 1) {
+        printf("ERRO: Informe o diretorio com os arquivos de configuracao.");
         exit(1);
-
     }
-    else {
+    AbreArquivos(argv[1], &config_inicial, &personagens);
 
-        fscanf(config_inicial, "%d\n", &dados.animacao); // primeira linha
-        fscanf(config_inicial, "%d %d", &dados.colunas, &dados.qtdPistas); // segunda linha
+    ValidaArquivos(argc, argv[1], config_inicial, personagens);
 
-        /* printf("Dados da Animação: %d\n", dados.animacao);
-        printf("COLUNAS: %d | PISTAS: %d\n", dados.colunas, dados.qtdPistas); */
-        
-        /* fscanf(config_inicial, "%c", &lixo);
+    jogo = LeArquivosJogo(config_inicial, personagens);
 
+    //InicializarMapaBase(14, 45, jogo.mapaBase);
+    //ImprimeMapa(4, 3, 10, 14, 45, jogo.mapaBase);  
+      
+}
 
-        while (pistaAtual < dados.qtdPistas-1){
+//############## LEITURA DOS ARQUIVOS ###############
+tJogo LeArquivosJogo(FILE *config_inicial, FILE *personagens){
+    
+    tJogo jogo;
 
-            fscanf(config_inicial, "%c", &letra); 
+    jogo.galinha = LeMatrizGalinha(personagens);
 
-            if (letra == '\n') { // linha de chegada e pistas vazias
-                //printf("Linha Vazia: %c | Pista: %d\n", letra, pistaAtual);
-                pistaAtual++;
-            }
+    jogo.dados = LeDados(config_inicial);
+    
+    
+    int pistaAtual = 0, idxVetor = 0, qtdCarros, i, j;
+    char direcao, lixo;
+    tCarro carroBase;
+
+    carroBase = LeMatrizCarro(personagens, jogo.dados.animacao);
+
+    while (pistaAtual < jogo.dados.qtdPistas-1){
+
+            fscanf(config_inicial, "%c", &direcao); 
+
+            if (direcao == '\n') pistaAtual++;     // linha de chegada e pistas vazias
             else {
-                carroBase.direcao = letra;
 
-                fscanf(config_inicial, " %d %d", &carroBase.velocidade, &qtdCarros); // escaneia cada linha, gerando um vetor de carros, com os primeiros elementos sendo
-                for (i = 0; i < qtdCarros; i++){                                     // os carros da primeira pista
-                    carros[idxVetor] = carroBase;
-                    carros[idxVetor].pista = pistaAtual;
-                    carros[idxVetor].index = i;
-                    fscanf(config_inicial, " %d", &carros[idxVetor].posX);   
+                carroBase.direcao = direcao;
+
+                fscanf(config_inicial, " %d %d", &carroBase.velocidade, &qtdCarros); // escaneia cada linha, gerando um vetor de carros, com os primeiros elementos sendo os carros da primeira pista   
+                
+                for (i = 0; i < qtdCarros; i++){          
+                    jogo.carros[idxVetor] = LeCarro(config_inicial, pistaAtual, carroBase, i);                          
                     idxVetor++; 
-                    //qtdCarrosTotal++;
                 }
 
                 fscanf(config_inicial, "%c", &lixo);
+               
                 pistaAtual++;
 
             }
-            
-
         }
 
-        fscanf(config_inicial, "%c %d %d", &letra, &galinha.posX, &galinha.vida); // linha da galinha
-
-        // ############## DEPURAÇÂO ################
-
-        /* printf("Letra galinha: %c\n", letra);
-
-        printf("##############\nGALINHA:\nVida: %d | posX: %d\nCARROS:\n", galinha.vida, galinha.posX);
-        for (i = 0; i < qtdCarrosTotal; i++){
-            printf("velocidade: %d | posX: %d | pista: %d | direcao: %c | index: %d\n", carros[i].velocidade, carros[i].posX, carros[i].pista, carros[i].direcao, carros[i].index);
-        }
-        printf("Pista Atual: %d\n", pistaAtual);
-        printf ("%d", idxVetor); 
-        
-        #############################################*/
-
-   /*  }    
-    
-    fclose(config_inicial);
-    
-    personagens = fopen(diretorio_personagens, "r");    // não sei como informar o diretorio
-    if (!personagens){
-
-        printf("Erro ao abrir o arquivo ""personagens.txt"" no diretorio: %s", argv[1]);
-        exit(1);
-        
-    }
-    else {
-        
+        /* printf("DESENHO CARRO\n");
         for (i = 0; i < 2; i++){
             for (j = 0; j < 3; j++){
-                fscanf(personagens, "%c", &galinha.matriz[i][j]);
-                //printf("%c", galinha.matriz[i][j]);
+                printf("%c", jogo.carros[0].matriz[i][j]);
+            }
+            printf("\n");
+        } */
+
+
+    jogo.galinha = LeGalinha(config_inicial);
+
+    fclose(config_inicial);
+    fclose(personagens);
+    
+    return jogo;
+
+}
+tDados LeDados(FILE * config_inicial){
+    
+    tDados dados;
+    char lixo;
+
+    fscanf(config_inicial, "%d\n", &dados.animacao); // primeira linha
+    fscanf(config_inicial, "%d %d", &dados.colunas, &dados.qtdPistas); // segunda linha
+    fscanf(config_inicial, "%c", &lixo);
+
+    /* printf("Dados da Animação: %d\n", dados.animacao);
+    printf("COLUNAS: %d | PISTAS: %d\n----------------------------\n", dados.colunas, dados.qtdPistas); */
+
+    return dados;
+
+}
+tGalinha LeGalinha(FILE * config_inicial){
+
+    tGalinha galinha;
+    char letra;
+
+    fscanf(config_inicial, "%c %d %d", &letra, &galinha.posX, &galinha.vida);
+
+    //printf("----------------------------\nGALINHA:\nVida: %d | posX: %d\n", galinha.vida, galinha.posX);
+
+    return galinha;
+
+}
+tGalinha LeMatrizGalinha(FILE * personagens){
+
+    tGalinha galinha;
+
+    int i, j;
+    char lixo;
+
+    //printf("DESENHO GALINHA\n");
+    for (i = 0; i < 2; i++) {
+        for (j = 0; j < 3; j++)
+        {
+            fscanf(personagens, "%c", &galinha.matriz[i][j]);
+            //printf("%c", galinha.matriz[i][j]);
+        }
+        fscanf(personagens, "%c", &lixo); // \n
+        //printf("%c", lixo);
+    }
+
+    return galinha;
+
+}
+tCarro LeCarro(FILE * config_inicial, int pistaAtual, tCarro carroBase, int index){
+    
+    tCarro carro;
+
+    carro = carroBase;
+    carro.pista = pistaAtual;
+    carro.index = index;
+    fscanf(config_inicial, " %d", &carro.posX);
+
+    //printf("velocidade: %d | posX: %d | pista: %d | direcao: %c | index: %d\n", carro.velocidade, carro.posX, carro.pista, carro.direcao, carro.index);
+
+    return carro;
+
+}
+tCarro LeMatrizCarro(FILE * personagens, int animacao){
+
+    tCarro carro;
+
+    int i, j;
+    char lixo;
+
+    if (animacao == 0) {
+        for (i = 0; i < 2; i++) {
+            for (j = 0; j < 3; j++) {
+                fscanf(personagens, "%c", &carro.matriz[i][j]);
+                //printf("%c", carro.matriz[i][j]);
             }
             fscanf(personagens, "%c", &lixo); // \n
             //printf("%c", lixo);
         }
-
-        printf("\n");
-
-        int k;
-
-        if (dados.animacao == 0) {
-            for (i = 0; i < 2; i++){
-                for (j = 0; j < 3; j++){
-                        fscanf(personagens, "%c", &carroBase.matriz[i][j]);
-                        //printf("%c", carroBase.matriz[i][j]);
-                }
-                fscanf(personagens, "%c", &lixo); // \n
-                //printf("%c", lixo);
-            }
-
-            
-
-            for (k = 0; k < 6; k++){
-                for (i = 0; i < 2; i++){
-                    for (j = 0; j < 3; j++){
-                        carros[k].matriz[i][j] = carroBase.matriz[i][j];
-                    }
-                }
-            }
-
-        }
-        else {
-            printf("\n###Fazer animaçao###\n");
-        }
     }
-    
-    fclose(personagens);
+    else {
 
-    return 0; */
-    
+        printf ("### FAZER ANIMACAO ###\n");
+    }
+
+    return carro;
+
 }
 
+//############## GERENCIAMENTO DO MAPA ##############
 void AtualizaTela(tJogo jogo, int linhas, int colunas, char mapaBase[linhas][colunas]){
     char mapaLocal[linhas][colunas];
 
-    PreencheMapa(linhas, colunas, mapaLocal);
+    //PreencheMapa(linhas, colunas, mapaLocal);
     ImprimeMapa(jogo.dados.pontos, jogo.galinha.vida, jogo.dados.iteracao, linhas, colunas, mapaBase);
 
 }
-
 void InicializarMapaBase(int linhas, int colunas, char mapa[linhas][colunas]){
     int i, j;
 
@@ -235,7 +249,6 @@ void InicializarMapaBase(int linhas, int colunas, char mapa[linhas][colunas]){
         }
     }
 }
-
 void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]){
     int i, j;
 
@@ -262,68 +275,34 @@ void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, 
     }
 }
 
-tDados LeDados(char * configFile){
-    tDados dados;
-
-    sscanf(configFile, "%d\n%d %d\n", &dados.animacao, &dados.colunas, &dados.qtdPistas);
-
-    return dados;
-}
-
 //############## VALIDACAO DE ARQUIVOS ##############
-void Validacao(char * argv, int argc){
+void AbreArquivos(char * argv, FILE **config_inicial, FILE **personagens){
     char caminhoConfig[1100];
     char caminhoPersonagens[1100];
     
     char arquivoConfig[] = "/config_inicial.txt";
     char arquivoPersonagens[] = "/personagens.txt";
 
-    geraCaminhoCompleto(argv, arquivoConfig, caminhoConfig);
-    geraCaminhoCompleto(argv, arquivoPersonagens, caminhoPersonagens);
+    geraCaminhoCompletoArquivos(argv, arquivoConfig, caminhoConfig);
+    geraCaminhoCompletoArquivos(argv, arquivoPersonagens, caminhoPersonagens);
 
-    ValidaArquivos(argc, argv, caminhoConfig, caminhoPersonagens);
+    *config_inicial = fopen(caminhoConfig, "r");
+    *personagens = fopen(caminhoPersonagens, "r");
+
 }
-void geraCaminhoCompleto(char * diretorio, char * arquivo, char * caminho){
+void geraCaminhoCompletoArquivos(char * diretorio, char * arquivo, char * caminho){
 
     strcpy(caminho, diretorio);
     strcat(caminho, arquivo);
 
 }
-void LeArquivo(char * conteudo, char * diretorio_completo){
-    char c;
-    int i = 0;
-    
-    FILE * file;
-
-    file = fopen(diretorio_completo, "r");
-
-    while (fscanf(file, "%c", &c) != EOF && i < 999){
-        conteudo[i] = c;
-        i++;
-    }
-
-    conteudo[i] = '\0';
-
-    fclose(file);
-
-}
-void ValidaArquivos(int argc, char * argv, char * diretorio_config, char * diretorio_personagens){
-    
-    if (argc == 1) {
-        printf("ERRO: Informe o diretorio com os arquivos de configuracao.");
-        exit(1);
-    }
-    
+void ValidaArquivos(int argc, char * argv, FILE *config_inicial, FILE *personagens){    
     int comprimento = strlen(argv);
     
     if (comprimento > 1000) {
         printf("ERRO: Diretorio inválido (mais de 1000 caracteres)");
     }
 
-    FILE * config_inicial;
-    FILE * personagens;
-    
-    config_inicial = fopen(diretorio_config, "r");   // não sei como informar o diretorio
     if (!config_inicial){
 
         printf("Erro ao abrir o arquivo ""config_inicial.txt"" no diretorio: %s", argv);
@@ -331,15 +310,10 @@ void ValidaArquivos(int argc, char * argv, char * diretorio_config, char * diret
 
     }
     
-    fclose(config_inicial);
-
-    personagens = fopen(diretorio_personagens, "r");    // não sei como informar o diretorio
     if (!personagens){
 
         printf("Erro ao abrir o arquivo ""personagens.txt"" no diretorio: %s", argv);
         exit(1);
         
     }
-    
-    fclose(personagens);
 }
