@@ -43,6 +43,7 @@ typedef struct{
     int numMovimentos;
     int numMovParaTras;
     int altura;
+    int alturaMorte;
     int alturaMaxMorte;
     int alturaMinMorte;
     int alturaMax;
@@ -135,10 +136,8 @@ tJogo ContinuarJogo(tJogo jogo){
 
     tJogo jogoL;
 
-    //jogoL.dados = jogo.dados;
-
-    int i;
     
+    int i;
     char leitura;
     char comando;
     int colidiu;
@@ -166,24 +165,14 @@ tJogo ContinuarJogo(tJogo jogo){
         
     }
 
+    //printf("Altura Max: %d | Altura Max Morte: %d | Altura Min Morte: %d\n", jogoL.dados.alturaMax, jogoL.dados.alturaMaxMorte, jogoL.dados.alturaMinMorte);
+
     int linhas = 3 * jogoL.dados.qtdPistas - 1;
     char mapaLocal[linhas][jogoL.dados.colunas];
 
     InicializaMapaLocal(linhas, jogoL.dados.colunas, mapaLocal);        
     PreencherMapa(jogoL, linhas, jogoL.dados.colunas, mapaLocal);
     ImprimeMapa(jogoL.dados.pontos, jogoL.galinha.vida, jogoL.dados.iteracao, linhas, jogoL.dados.colunas, mapaLocal);
-
-    /* if (colidiu){
-        galinha = AtualizarGalinhaColisao(galinha, jogoL.dados.qtdPistas);
-        dados = AtualizarDadosColisao(colidiu); // pontuacao zera
-        AtualizarCarros();
-    }
-    else {
-        galinha = AtualizarGalinha(galinha, comando, dados.qtdPistas); // se pa vai ser como em LeArquivos
-        AtualizarCarros(); // se pa vai ser como em LeArquivos
-        dados = AtualizarDados();
-        ImprimeMapa();
-    } */
 
     return jogoL;
 
@@ -208,8 +197,9 @@ int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha
     //printf("Pista prev galinha: %d\n", pistaPrevGalinha);
 
     int idxVetor;
-    int prevPosCarro = 0;
-    int posGalinha = galinha.posX + 1;
+    int prevPosCarro;
+    int posChecagemCarro;
+    int posGalinha;
     int i, j;
     
     for (idxVetor = 0; idxVetor < qtdCarros; idxVetor++){
@@ -219,17 +209,33 @@ int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha
             continue;
         }
         
-        prevPosCarro = carros[idxVetor].posX + carros[idxVetor].velocidade;
         //printf("Passou pelo continnue");
         
         for (i = -1; i < 2; i++){
-            for (j = -1; j < 2; j++){
 
-                posGalinha += j;
-                prevPosCarro += i;
+            posGalinha = galinha.posX;
+
+            if (carros[idxVetor].direcao == 'D'){
+                prevPosCarro = carros[idxVetor].posX + carros[idxVetor].velocidade;
+            }
+            else if (carros[idxVetor].direcao == 'E'){
+                prevPosCarro = carros[idxVetor].posX - carros[idxVetor].velocidade;
+            }
+
+            for (j = -1; j < 2; j++){
+                posChecagemCarro = 0;
+                posGalinha = galinha.posX + i;
+               
+                
+                if (carros[idxVetor].direcao == 'D'){
+                    posChecagemCarro = prevPosCarro - j;
+                }
+                else if (carros[idxVetor].direcao == 'E'){
+                    posChecagemCarro = prevPosCarro + j;
+                }
                 
                 //printf("PrevPos do carro+i: %d | posGalinha+j: %d\n", prevPosCarro, posGalinha);
-                if (prevPosCarro == posGalinha) return 1;
+                if (posChecagemCarro == posGalinha) return 1;
             }
         }
     }
@@ -278,13 +284,18 @@ tDados AtualizaDadosColisao(tDados dados, char comando){
 
     tDados dadosL = dados;
 
-    int alturaMaxMorte = 0;
-
-    if (comando == 'w') dadosL.numMovimentos++;
+    if (comando == 'w') {
+        dadosL.numMovimentos++;
+        dadosL.alturaMorte = dadosL.altura;
+    }
     else if (comando == 's') {
         dadosL.numMovimentos++;
         dadosL.numMovParaTras++;
+        dadosL.alturaMorte = dadosL.altura;
     }
+
+    if (dadosL.alturaMorte < dadosL.alturaMinMorte) dadosL.alturaMinMorte = dadosL.alturaMorte;
+    if (dadosL.alturaMorte > dadosL.alturaMaxMorte) dadosL.alturaMaxMorte = dadosL.alturaMorte;
 
     dadosL.iteracao++;
     dadosL.pontos = 0;
@@ -459,15 +470,15 @@ tGalinha LeMatrizGalinha(FILE * personagens){
     int i, j;
     char lixo;
 
-    printf("DESENHO GALINHA\n");
+    //printf("DESENHO GALINHA\n");
     for (i = 0; i < 2; i++) {
         for (j = 0; j < 3; j++)
         {
             fscanf(personagens, "%c", &galinha.matriz[i][j]);  // erro quando tem um " " em algum elemento do desenho
-            printf("%c", galinha.matriz[i][j]);
+            //printf("%c", galinha.matriz[i][j]);
         }
         fscanf(personagens, "%c", &lixo); // \n
-        printf("%c", lixo);
+        //printf("%c", lixo);
     }
 
     return galinha;
@@ -523,8 +534,9 @@ tJogo InicializarJogo(FILE *config_inicial, FILE *personagens){
     
     jogo.dados.altura = 0;
     jogo.dados.alturaMax = 0;
+    jogo.dados.alturaMorte = 0;
     jogo.dados.alturaMaxMorte = 0;
-    jogo.dados.alturaMinMorte = 0;
+    jogo.dados.alturaMinMorte = 999;
     jogo.dados.iteracao = 0;
     jogo.dados.numMovimentos = 0;
     jogo.dados.numMovParaTras = 0;
