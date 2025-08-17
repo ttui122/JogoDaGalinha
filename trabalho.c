@@ -86,6 +86,9 @@ void AbreArquivos(char * argv, FILE **config_inicial, FILE **personagens);
 void ValidaArquivos(char * argv, FILE *config_inicial, FILE *personagens);
 
 
+//Geracao de Arquivos
+void GerarArquivoInicializacao(tDados dados, tGalinha galinha, int linhas, int colunas, char mapa[linhas][colunas]);
+void GerarArquivoEstatisticas(tJogo jogo);
 
 int main(int argc, char * argv[]){
     tJogo jogo;
@@ -109,8 +112,8 @@ int main(int argc, char * argv[]){
 
     }
  
-    /* GerarArquivoEstatistica();
-    GerarArquivoResumo();
+    GerarArquivoEstatisticas(jogo);
+    /* GerarArquivoResumo();
     GerarArquivoRanking();
     GerarArquivoHeatmap(); */
 
@@ -146,11 +149,9 @@ tJogo ContinuarJogo(tJogo jogo){
 
     colidiu = ChecarColisao(comando, jogo.dados.qtdTotalCarros, jogo.carros, jogo.galinha);
     
-    if ((comando == 'w' || comando == 's' || comando == ' ') && colidiu){
-        //printf("Colidiu\n");
+    if (colidiu && (comando == 'w' || comando == 's' || comando == ' ')){
         jogoL.galinha = AtualizaGalinhaColisao(jogo.galinha, jogoL.dados.qtdPistas);
         jogoL.dados = AtualizaDadosColisao(jogo.dados, comando);
-        //printf("Atualizou Dados\n");
         for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
             jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
         }
@@ -164,8 +165,6 @@ tJogo ContinuarJogo(tJogo jogo){
         jogoL.dados = AtualizaDados(jogo.dados, comando);
         
     }
-
-    //printf("Altura Max: %d | Altura Max Morte: %d | Altura Min Morte: %d\n", jogoL.dados.alturaMax, jogoL.dados.alturaMaxMorte, jogoL.dados.alturaMinMorte);
 
     int linhas = 3 * jogoL.dados.qtdPistas - 1;
     char mapaLocal[linhas][jogoL.dados.colunas];
@@ -266,10 +265,11 @@ tDados AtualizaDados(tDados dados, char comando){
         dadosL.altura += 3;
         dadosL.pontos++;
         dadosL.numMovimentos++;
+        if (dadosL.altura == (3 * dadosL.qtdPistas - 1)) dadosL.pontos += 10;
     }  
 
     else if (comando == 's') {
-        dadosL.altura -= 3;
+        if (dadosL.altura != 2) dadosL.altura -= 3;
         dadosL.numMovParaTras++;
         dadosL.numMovimentos++;
     }
@@ -284,25 +284,29 @@ tDados AtualizaDadosColisao(tDados dados, char comando){
 
     tDados dadosL = dados;
 
+    dadosL.alturaMorte = dadosL.altura;
+    dadosL.alturaMinMorte = 999;
+
     if (comando == 'w') {
         dadosL.numMovimentos++;
-        dadosL.alturaMorte = dadosL.altura;
+        dadosL.alturaMorte = dadosL.altura + 3;
     }
     else if (comando == 's') {
         dadosL.numMovimentos++;
         dadosL.numMovParaTras++;
-        dadosL.alturaMorte = dadosL.altura;
+        dadosL.alturaMorte = dadosL.altura - 3;
     }
+
+    printf("ALTURA MORTE: %d\n", dadosL.alturaMorte);
 
     if (dadosL.alturaMorte < dadosL.alturaMinMorte) dadosL.alturaMinMorte = dadosL.alturaMorte;
     if (dadosL.alturaMorte > dadosL.alturaMaxMorte) dadosL.alturaMaxMorte = dadosL.alturaMorte;
 
     dadosL.iteracao++;
     dadosL.pontos = 0;
-
+    dadosL.altura = 2;
 
     return dadosL;
-
 
 }
 
@@ -528,15 +532,15 @@ tCarro LeMatrizCarro(FILE * personagens, int animacao){
 tJogo InicializarJogo(FILE *config_inicial, FILE *personagens){
     
     tJogo jogo;
-
+    
     
     jogo = LeArquivosJogo(config_inicial, personagens);
     
-    jogo.dados.altura = 0;
+    jogo.dados.altura = 2;
     jogo.dados.alturaMax = 0;
     jogo.dados.alturaMorte = 0;
     jogo.dados.alturaMaxMorte = 0;
-    jogo.dados.alturaMinMorte = 999;
+    jogo.dados.alturaMinMorte = 0;
     jogo.dados.iteracao = 0;
     jogo.dados.numMovimentos = 0;
     jogo.dados.numMovParaTras = 0;
@@ -550,7 +554,13 @@ tJogo InicializarJogo(FILE *config_inicial, FILE *personagens){
     ImprimeMapa(jogo.dados.pontos, jogo.galinha.vida, jogo.dados.iteracao, linhas, jogo.dados.colunas, mapaInicialL);
     
     //jogo = InicializarHeatmap(jogo);
-    //GerarArquivoInicializacao();
+
+    int temArquivoInicializacao = 0;
+
+    if (!temArquivoInicializacao) {
+        GerarArquivoInicializacao(jogo.dados, jogo.galinha, linhas, jogo.dados.colunas, mapaInicialL);
+        temArquivoInicializacao = 1;
+    }
 
     return jogo;
 
@@ -614,7 +624,7 @@ void InicializaMapaLocal(int linhas, int colunas, char mapa[linhas][colunas]){
     }
 
 }
-void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]) { 
+void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]){ 
     
     int i, j;
 
@@ -645,6 +655,57 @@ void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, 
 
 }
 
+//##############  CRIACAO DE ARQUIVOS  ##############
+void GerarArquivoInicializacao(tDados dados, tGalinha galinha, int linhas, int colunas, char mapa[linhas][colunas]){
+
+    FILE * inicializacao;
+
+    inicializacao = fopen("inicializacao.txt", "w");
+
+    int i, j;
+
+    for (j = 0; j < colunas + 2; j++){
+        if (j == 0 || j == colunas+1) fprintf(inicializacao, "|");
+        else fprintf(inicializacao, "-");
+    }
+    fprintf(inicializacao, "\n");
+
+    for (i = 0; i < linhas; i++){
+        for (j = 0; j < colunas + 2; j++){
+            if (j == 0 || j == colunas+1) fprintf(inicializacao, "|");
+            else fprintf(inicializacao, "%c", mapa[i][j-1]);
+        }
+        fprintf(inicializacao, "\n");
+    }
+
+    // linha inferior
+    for (j = 0; j < colunas + 2; j++) {
+        if (j == 0 || j == colunas+1) fprintf(inicializacao, "|");
+        else fprintf(inicializacao, "-");
+    }
+    fprintf(inicializacao, "\n");
+
+    fprintf(inicializacao, "A posicao central da galinha iniciara em (%d %d).", galinha.posX, galinha.posY);
+
+    fclose(inicializacao);
+
+}
+
+void GerarArquivoEstatisticas(tJogo jogo){
+
+    FILE * estatisticas;
+
+    estatisticas = fopen("estatisticas.txt", "w");
+
+    fprintf(estatisticas, "Numero total de movimentos: %d\n", jogo.dados.numMovimentos); 
+    fprintf(estatisticas, "Altura maxima que a galinha chegou: %d\n", jogo.dados.alturaMax);
+    fprintf(estatisticas, "Altura maxima que a galinha foi atropelada: %d\n", jogo.dados.alturaMaxMorte);
+    fprintf(estatisticas, "Altura minima que a galinha foi atropelada: %d\n", jogo.dados.alturaMinMorte);
+    fprintf(estatisticas, "Numero de movimentos na direcao oposta: %d", jogo.dados.numMovParaTras);
+
+    fclose(estatisticas);
+
+}
 
 //############## VALIDACAO DE ARQUIVOS ##############
 void AbreArquivos(char * argv, FILE **config_inicial, FILE **personagens){
