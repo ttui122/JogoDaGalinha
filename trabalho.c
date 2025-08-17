@@ -7,12 +7,14 @@ typedef struct{
 
     int vida;
     int posX;
+    int posY;
     int pista;
     char matriz[2][3];
 
 } tGalinha;
-tGalinha LeGalinha(FILE * config_inicial, tGalinha galinha);
+tGalinha LeGalinha(FILE * config_inicial, tGalinha galinha, int pista);
 tGalinha LeMatrizGalinha(FILE * personagens);
+tGalinha AtualizarGalinha(tGalinha galinha, char comando, int ultimaPista);
 
 
 
@@ -29,7 +31,7 @@ typedef struct{
 } tCarro;
 tCarro LeCarro(FILE * config_inicial, int pistaAtual, tCarro carroBase, int index);
 tCarro LeMatrizCarro(FILE * personagens, int animacao);
-
+tCarro AtualizaCarro(tCarro carro, int colunas);
 
 
 //Dados
@@ -43,6 +45,7 @@ typedef struct{
     int alturaMinMorte;
     int alturaMax;
     int qtdPistas;
+    int qtdTotalCarros;
     int colunas;
     int animacao;
     
@@ -62,18 +65,19 @@ typedef struct{
 } tJogo;
 tJogo InicializarJogo(FILE *config_inicial, FILE *personagens);
 tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens);
-tJogo InicializarMapaBase(tJogo jogo); // vai ir dentro da função InicializarJogo
 void InicializaMapaLocal(int linhas, int colunas,char mapa[linhas][colunas]);
 void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][colunas]);
-//void PreencheMapa(int linhas, int colunas, char mapa[linhas][colunas]);
 void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]);
+int TerminarJogo(tJogo jogo);
+tJogo ContinuarJogo(tJogo jogo);
+char LeComando();
 
 
 
 //Validacao dos Arquivos
 void geraCaminhoCompletoArquivos(char * diretorio, char * arquivo, char * caminho);
 void AbreArquivos(char * argv, FILE **config_inicial, FILE **personagens);
-void ValidaArquivos(int argc, char * argv, FILE *config_inicial, FILE *personagens);
+void ValidaArquivos(char * argv, FILE *config_inicial, FILE *personagens);
 
 
 
@@ -89,24 +93,188 @@ int main(int argc, char * argv[]){
     }
     AbreArquivos(argv[1], &config_inicial, &personagens);
 
-    ValidaArquivos(argc, argv[1], config_inicial, personagens);
+    ValidaArquivos(argv[1], config_inicial, personagens);
 
     jogo = InicializarJogo(config_inicial, personagens);
 
-    /* while (!TerminarJogo()){
+    while (!TerminarJogo(jogo)){
 
-        ContinuarJogo();
+        jogo = ContinuarJogo(jogo);
 
     }
-
-    GerarArquivoEstatistica();
+ 
+    /* GerarArquivoEstatistica();
     GerarArquivoResumo();
     GerarArquivoRanking();
     GerarArquivoHeatmap(); */
 
 }
 
+//############## FUNCIONAMENTO DO JOGO ##############
+int TerminarJogo(tJogo jogo){
 
+    if (jogo.galinha.pista == 1) {
+        printf("Parabens! Voce atravessou todas as pistas e venceu!\n");
+        return 1;
+    }
+    else if (jogo.galinha.vida == 0) {
+        printf("Voce perdeu todas as vidas! Fim de jogo.\n");
+        return 1;
+    }
+
+    return 0;
+
+}
+
+tJogo ContinuarJogo(tJogo jogo){
+
+    tJogo jogoL;
+
+    //jogoL.galinha = jogo.galinha;
+    
+    int i;
+    
+    char comando;
+    int colidiu;
+    int linhas = 3 * jogoL.dados.qtdPistas - 1;
+
+    comando = LeComando();
+    colidiu = ChecarColisao(comando);
+
+    if (colidiu){
+        /* galinha = AtualizarGalinhaColisao(galinha, jogoL.dados.qtdPistas);
+        dados = AtualizarDadosColisao(colidiu);
+        for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
+            jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
+        } */
+    }
+    else if (comando == 'w' || comando == 's' || comando == ' '){
+
+        for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
+            jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
+        }
+    
+        jogoL.galinha = AtualizarGalinha(jogo.galinha, comando, jogo.dados.qtdPistas);
+
+        jogoL.dados = AtualizaDados(jogo.dados, comando);
+    
+    
+        char mapaLocal[linhas][jogoL.dados.colunas];
+        InicializaMapaLocal(linhas, jogoL.dados.colunas, mapaLocal);
+    
+        PreencherMapa(jogoL, linhas, jogoL.dados.colunas, mapaLocal);
+        ImprimeMapa(jogoL.dados.pontos, jogoL.galinha.vida, jogoL.dados.iteracao, linhas, jogoL.dados.colunas, mapaLocal);
+
+    }
+
+    /* if (colidiu){
+        galinha = AtualizarGalinhaColisao(galinha, jogoL.dados.qtdPistas);
+        dados = AtualizarDadosColisao(colidiu); // pontuacao zera
+        AtualizarCarros();
+    }
+    else {
+        galinha = AtualizarGalinha(galinha, comando, dados.qtdPistas); // se pa vai ser como em LeArquivos
+        AtualizarCarros(); // se pa vai ser como em LeArquivos
+        dados = AtualizarDados();
+        ImprimeMapa();
+    } */
+
+    return jogoL;
+
+}
+
+char LeComando(){
+
+    char comando;
+
+    scanf("%c", &comando);
+
+   return comando;
+
+}
+
+tDados AtualizaDados(tDados dados, char comando){
+
+    tDados dadosL = dados;
+
+    dadosL.iteracao++;
+    dadosL.numMovimentos++;
+    dadosL.alturaMax += 3;// checar
+
+    if (comando == 'w') dadosL.pontos++;
+
+    if (comando == 's') dadosL.numMovParaTras++;
+
+}
+
+tGalinha AtualizarGalinha(tGalinha galinha, char comando, int ultimaPista){
+
+    tGalinha galinhaL = galinha;
+    
+
+    switch (comando) {
+    case 'w':
+        //comandos galinha pra frente;
+        galinhaL.posY -= 3;
+        galinhaL.pista--;
+        break;
+    case 's':
+        //comandos galinha pra tras;
+        if (galinha.pista == ultimaPista) {
+            galinhaL.posY = galinha.posY;
+            galinhaL.pista = galinha.pista;
+        }
+        else {
+            galinhaL.posY += 3;
+            galinhaL.pista++;
+        }
+        break;
+        case ' ':
+        //comandos galnha ficar parada;
+        galinhaL.posY = galinha.posY;
+        galinhaL.pista = galinha.pista;
+        break;
+        default:
+        break;
+    }
+    
+    return galinhaL;
+    
+}
+
+tGalinha AtualizarGalinhaColisao(tGalinha galinha, int ultimaPista){
+
+    tGalinha galinhaL = galinha;
+
+    galinhaL.pista = ultimaPista;
+    galinhaL.vida--;
+
+    return galinha;
+
+}
+
+tCarro AtualizaCarro(tCarro carro, int colunas){
+
+    tCarro carroL = carro;
+
+    if (carro.direcao == 'D'){
+        carroL.posX += carro.velocidade;
+
+        
+    }
+    else if (carro.direcao == 'E'){
+        carroL.posX -= carro.velocidade;
+        
+        
+    }
+    
+    if (carroL.posX > colunas) carroL.posX %= colunas; // se tiver erro possivel que e aqui
+    
+    else if (carroL.posX < 1) carroL.posX += colunas;
+
+    return carroL;
+
+}
 
 //############## LEITURA DOS ARQUIVOS ###############
 tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens){
@@ -118,13 +286,13 @@ tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens){
     jogo.dados = LeDados(config_inicial);
     
     
-    int pistaAtual = 0, idxVetor = 0, qtdCarros, i, j;
+    int pistaAtual = 1, idxVetor = 0, qtdCarros, i, j;
     char direcao, lixo;
     tCarro carroBase;
 
     carroBase = LeMatrizCarro(personagens, jogo.dados.animacao);
 
-    while (pistaAtual < jogo.dados.qtdPistas-1){
+    while (pistaAtual < jogo.dados.qtdPistas){
 
             fscanf(config_inicial, "%c", &direcao); 
 
@@ -138,6 +306,7 @@ tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens){
                 for (i = 0; i < qtdCarros; i++){          
                     jogo.carros[idxVetor] = LeCarro(config_inicial, pistaAtual, carroBase, i);                          
                     idxVetor++; 
+                    jogo.dados.qtdTotalCarros++;
                 }
 
                 fscanf(config_inicial, "%c", &lixo);
@@ -156,7 +325,7 @@ tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens){
         } */
 
 
-    jogo.galinha = LeGalinha(config_inicial, galinhaMatriz);
+    jogo.galinha = LeGalinha(config_inicial, galinhaMatriz, jogo.dados.qtdPistas);
 
     fclose(config_inicial);
     fclose(personagens);
@@ -179,10 +348,11 @@ tDados LeDados(FILE * config_inicial){
     return dados;
 
 }
-tGalinha LeGalinha(FILE * config_inicial, tGalinha galinha){
+tGalinha LeGalinha(FILE * config_inicial, tGalinha galinha, int pista){
 
     tGalinha galinhaL = galinha;
-    galinhaL.pista = 0;
+    galinhaL.pista = pista;
+    galinhaL.posY = (3 * pista - 1) - 1;
 
     char letra;
 
@@ -200,15 +370,15 @@ tGalinha LeMatrizGalinha(FILE * personagens){
     int i, j;
     char lixo;
 
-    //printf("DESENHO GALINHA\n");
+    printf("DESENHO GALINHA\n");
     for (i = 0; i < 2; i++) {
         for (j = 0; j < 3; j++)
         {
-            fscanf(personagens, "%c", &galinha.matriz[i][j]);
-            //printf("%c", galinha.matriz[i][j]);
+            fscanf(personagens, "%c", &galinha.matriz[i][j]);  // erro quando tem um " " em algum elemento do desenho
+            printf("%c", galinha.matriz[i][j]);
         }
         fscanf(personagens, "%c", &lixo); // \n
-        //printf("%c", lixo);
+        printf("%c", lixo);
     }
 
     return galinha;
@@ -238,7 +408,7 @@ tCarro LeMatrizCarro(FILE * personagens, int animacao){
     if (animacao == 0) {
         for (i = 0; i < 2; i++) {
             for (j = 0; j < 3; j++) {
-                fscanf(personagens, "%c", &carro.matriz[i][j]);
+                fscanf(personagens, "%c", &carro.matriz[i][j]); // nao testei, mas possivelmente pode dar erro quando tem um " " em algum elemento do desenho
                 //printf("%c", carro.matriz[i][j]);
             }
             fscanf(personagens, "%c", &lixo); // \n
@@ -285,10 +455,19 @@ tJogo InicializarJogo(FILE *config_inicial, FILE *personagens){
 }
 void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][colunas]){
     
-    int pistaAtual = 0;
+    int pistaAtual = 1;
     int idxCarro = 0;
-    int i, j;
+    int i, j, idxCarro;
+
+    i = jogo.galinha.posY - 1;
+    j = jogo.galinha.posX - 1;
     
+    mapa[i][j-1] = jogo.galinha.matriz[0][0];
+    mapa[i][j] = jogo.galinha.matriz[0][1];
+    mapa[i][j+1] = jogo.galinha.matriz[0][2];      // não estou fazendo a checagem do limite
+    mapa[i+1][j-1] = jogo.galinha.matriz[1][0];
+    mapa[i+1][j] = jogo.galinha.matriz[1][1];
+    mapa[i+1][j+1] = jogo.galinha.matriz[1][2];
     
     for (i = 0; i < linhas; i++){
         
@@ -297,35 +476,27 @@ void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][coluna
             continue;
         }
 
-        for (j = 0; j < colunas; j++){
-            
+        for (idxCarro = 0; idxCarro < jogo.dados.qtdTotalCarros; idxCarro++) {
+            if (jogo.carros[idxCarro].pista != pistaAtual) continue;
+                                                     // aqui se usa j+1 por ser uma comparacao com a posX do carro, que considera as margens
+            int x = jogo.carros[idxCarro].posX - 1;
 
-            if (i == linhas-2 && j+1 == jogo.galinha.posX) {
+            int esquerda = ((jogo.carros[idxCarro].posX - 1) - 1 + colunas) % colunas;
+            int direita  = ((jogo.carros[idxCarro].posX - 1) + 1) % colunas;
+
+            mapa[i][esquerda] = jogo.carros[0].matriz[0][0];
+            mapa[i][jogo.carros[idxCarro].posX - 1] = jogo.carros[0].matriz[0][1];
+            mapa[i][direita] = jogo.carros[0].matriz[0][2];
+
+            mapa[i+1][esquerda] = jogo.carros[0].matriz[1][0];
+            mapa[i+1][jogo.carros[idxCarro].posX - 1] = jogo.carros[0].matriz[1][1];
+            mapa[i+1][direita] = jogo.carros[0].matriz[1][2];
                 
-                mapa[i][j-1] = jogo.galinha.matriz[0][0];
-                mapa[i][j] = jogo.galinha.matriz[0][1];
-                mapa[i][j+1] = jogo.galinha.matriz[0][2];      // não estou fazendo a checagem do limite
-                mapa[i+1][j-1] = jogo.galinha.matriz[1][0];
-                mapa[i+1][j] = jogo.galinha.matriz[1][1];
-                mapa[i+1][j+1] = jogo.galinha.matriz[1][2];
-
-            
-            }
-            else if (pistaAtual == jogo.carros[idxCarro].pista && i % 3 == 0 && j+1 == jogo.carros[idxCarro].posX) {
-           
-                mapa[i][j-1] = jogo.carros[idxCarro].matriz[0][0];
-                mapa[i][j] = jogo.carros[idxCarro].matriz[0][1];        // não estou fazendo a checagem do limite;
-                mapa[i][j+1] = jogo.carros[idxCarro].matriz[0][2];
-                mapa[i+1][j-1] = jogo.carros[idxCarro].matriz[1][0];
-                mapa[i+1][j] = jogo.carros[idxCarro].matriz[1][1];
-                mapa[i+1][j+1] = jogo.carros[idxCarro].matriz[1][2];
-
-                idxCarro++;
-                
-            } 
         }
-    }
-    
+
+        i++;
+
+    }  
 }
 void InicializaMapaLocal(int linhas, int colunas, char mapa[linhas][colunas]){
     
@@ -394,10 +565,10 @@ void geraCaminhoCompletoArquivos(char * diretorio, char * arquivo, char * caminh
     strcat(caminho, arquivo);
 
 }
-void ValidaArquivos(int argc, char * argv, FILE *config_inicial, FILE *personagens){    
+void ValidaArquivos(char * argv, FILE *config_inicial, FILE *personagens){    
     int comprimento = strlen(argv);
     
-    if (comprimento > 1000) {
+    if (comprimento >= 1000) {
         printf("ERRO: Diretorio inválido (mais de 1000 caracteres)");
     }
 
