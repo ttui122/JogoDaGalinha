@@ -14,7 +14,8 @@ typedef struct{
 } tGalinha;
 tGalinha LeGalinha(FILE * config_inicial, tGalinha galinha, int pista);
 tGalinha LeMatrizGalinha(FILE * personagens);
-tGalinha AtualizarGalinha(tGalinha galinha, char comando, int ultimaPista);
+tGalinha AtualizaGalinha(tGalinha galinha, char comando, int ultimaPista);
+tGalinha AtualizaGalinhaColisao(tGalinha galinha, int qdtPistas);
 
 
 
@@ -41,6 +42,7 @@ typedef struct{
     int iteracao;
     int numMovimentos;
     int numMovParaTras;
+    int altura;
     int alturaMaxMorte;
     int alturaMinMorte;
     int alturaMax;
@@ -51,6 +53,8 @@ typedef struct{
     
 } tDados;
 tDados LeDados(FILE * config_inicial);
+tDados AtualizaDados(tDados dados, char comando);
+tDados AtualizaDadosColisao(tDados dados, char comando);
 
 
 
@@ -71,6 +75,7 @@ void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, 
 int TerminarJogo(tJogo jogo);
 tJogo ContinuarJogo(tJogo jogo);
 char LeComando();
+int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha);
 
 
 
@@ -130,42 +135,43 @@ tJogo ContinuarJogo(tJogo jogo){
 
     tJogo jogoL;
 
-    //jogoL.galinha = jogo.galinha;
-    
+    //jogoL.dados = jogo.dados;
+
     int i;
     
+    char leitura;
     char comando;
     int colidiu;
-    int linhas = 3 * jogoL.dados.qtdPistas - 1;
-
+    
     comando = LeComando();
-    colidiu = ChecarColisao(comando);
 
-    if (colidiu){
-        /* galinha = AtualizarGalinhaColisao(galinha, jogoL.dados.qtdPistas);
-        dados = AtualizarDadosColisao(colidiu);
+    colidiu = ChecarColisao(comando, jogo.dados.qtdTotalCarros, jogo.carros, jogo.galinha);
+    
+    if ((comando == 'w' || comando == 's' || comando == ' ') && colidiu){
+        //printf("Colidiu\n");
+        jogoL.galinha = AtualizaGalinhaColisao(jogo.galinha, jogoL.dados.qtdPistas);
+        jogoL.dados = AtualizaDadosColisao(jogo.dados, comando);
+        //printf("Atualizou Dados\n");
         for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
             jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
-        } */
+        }
     }
     else if (comando == 'w' || comando == 's' || comando == ' '){
 
         for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
             jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
         }
-    
-        jogoL.galinha = AtualizarGalinha(jogo.galinha, comando, jogo.dados.qtdPistas);
-
+        jogoL.galinha = AtualizaGalinha(jogo.galinha, comando, jogo.dados.qtdPistas);
         jogoL.dados = AtualizaDados(jogo.dados, comando);
-    
-    
-        char mapaLocal[linhas][jogoL.dados.colunas];
-        InicializaMapaLocal(linhas, jogoL.dados.colunas, mapaLocal);
-    
-        PreencherMapa(jogoL, linhas, jogoL.dados.colunas, mapaLocal);
-        ImprimeMapa(jogoL.dados.pontos, jogoL.galinha.vida, jogoL.dados.iteracao, linhas, jogoL.dados.colunas, mapaLocal);
-
+        
     }
+
+    int linhas = 3 * jogoL.dados.qtdPistas - 1;
+    char mapaLocal[linhas][jogoL.dados.colunas];
+
+    InicializaMapaLocal(linhas, jogoL.dados.colunas, mapaLocal);        
+    PreencherMapa(jogoL, linhas, jogoL.dados.colunas, mapaLocal);
+    ImprimeMapa(jogoL.dados.pontos, jogoL.galinha.vida, jogoL.dados.iteracao, linhas, jogoL.dados.colunas, mapaLocal);
 
     /* if (colidiu){
         galinha = AtualizarGalinhaColisao(galinha, jogoL.dados.qtdPistas);
@@ -183,13 +189,64 @@ tJogo ContinuarJogo(tJogo jogo){
 
 }
 
+int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha){
+
+    int pistaPrevGalinha = 0;
+
+    //printf("Pista da Galinha: %d\n", galinha.pista);
+
+    if (comando == 'w'){
+        pistaPrevGalinha = galinha.pista-1;
+    }
+    else if (comando == 's'){
+        pistaPrevGalinha = galinha.pista+1;
+    }
+    else if (comando == ' '){
+        pistaPrevGalinha = galinha.pista;
+    }
+
+    //printf("Pista prev galinha: %d\n", pistaPrevGalinha);
+
+    int idxVetor;
+    int prevPosCarro = 0;
+    int posGalinha = galinha.posX + 1;
+    int i, j;
+    
+    for (idxVetor = 0; idxVetor < qtdCarros; idxVetor++){
+        //printf("Entrou no for");
+        if (carros[idxVetor].pista != pistaPrevGalinha){
+            //printf("Pista: %d\n", carros[idxVetor].pista);    
+            continue;
+        }
+        
+        prevPosCarro = carros[idxVetor].posX + carros[idxVetor].velocidade;
+        //printf("Passou pelo continnue");
+        
+        for (i = -1; i < 2; i++){
+            for (j = -1; j < 2; j++){
+
+                posGalinha += j;
+                prevPosCarro += i;
+                
+                //printf("PrevPos do carro+i: %d | posGalinha+j: %d\n", prevPosCarro, posGalinha);
+                if (prevPosCarro == posGalinha) return 1;
+            }
+        }
+    }
+
+    return 0;
+
+}
+
 char LeComando(){
 
-    char comando;
+    char buffer[10];
 
-    scanf("%c", &comando);
+    if (fgets(buffer, sizeof(buffer), stdin) != NULL) { // mudar isso depois
+        return buffer[0]; 
+    }
 
-   return comando;
+    return '\0'; 
 
 }
 
@@ -198,16 +255,47 @@ tDados AtualizaDados(tDados dados, char comando){
     tDados dadosL = dados;
 
     dadosL.iteracao++;
-    dadosL.numMovimentos++;
-    dadosL.alturaMax += 3;// checar
+    
+    if (comando == 'w') {
+        dadosL.altura += 3;
+        dadosL.pontos++;
+        dadosL.numMovimentos++;
+    }  
 
-    if (comando == 'w') dadosL.pontos++;
+    else if (comando == 's') {
+        dadosL.altura -= 3;
+        dadosL.numMovParaTras++;
+        dadosL.numMovimentos++;
+    }
 
-    if (comando == 's') dadosL.numMovParaTras++;
+    if (dadosL.altura > dadosL.alturaMax) dadosL.alturaMax = dadosL.altura;
+
+    return dadosL;
 
 }
 
-tGalinha AtualizarGalinha(tGalinha galinha, char comando, int ultimaPista){
+tDados AtualizaDadosColisao(tDados dados, char comando){
+
+    tDados dadosL = dados;
+
+    int alturaMaxMorte = 0;
+
+    if (comando == 'w') dadosL.numMovimentos++;
+    else if (comando == 's') {
+        dadosL.numMovimentos++;
+        dadosL.numMovParaTras++;
+    }
+
+    dadosL.iteracao++;
+    dadosL.pontos = 0;
+
+
+    return dadosL;
+
+
+}
+
+tGalinha AtualizaGalinha(tGalinha galinha, char comando, int ultimaPista){
 
     tGalinha galinhaL = galinha;
     
@@ -242,14 +330,15 @@ tGalinha AtualizarGalinha(tGalinha galinha, char comando, int ultimaPista){
     
 }
 
-tGalinha AtualizarGalinhaColisao(tGalinha galinha, int ultimaPista){
+tGalinha AtualizaGalinhaColisao(tGalinha galinha, int ultimaPista){
 
     tGalinha galinhaL = galinha;
 
     galinhaL.pista = ultimaPista;
     galinhaL.vida--;
+    galinhaL.posY = (3 * ultimaPista - 1) - 1;
 
-    return galinha;
+    return galinhaL;
 
 }
 
@@ -432,6 +521,7 @@ tJogo InicializarJogo(FILE *config_inicial, FILE *personagens){
     
     jogo = LeArquivosJogo(config_inicial, personagens);
     
+    jogo.dados.altura = 0;
     jogo.dados.alturaMax = 0;
     jogo.dados.alturaMaxMorte = 0;
     jogo.dados.alturaMinMorte = 0;
@@ -457,7 +547,7 @@ void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][coluna
     
     int pistaAtual = 1;
     int idxCarro = 0;
-    int i, j, idxCarro;
+    int i, j;
 
     i = jogo.galinha.posY - 1;
     j = jogo.galinha.posX - 1;
