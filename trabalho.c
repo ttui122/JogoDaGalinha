@@ -75,13 +75,14 @@ tDados AtualizaDadosColisao(tDados dados, char comando);
 //Jogo
 typedef struct{
 
+    char caminho[1100];
     int heatmap[35][100];
     tDados dados;
     tGalinha galinha;
     tCarro carros[120];
 
 } tJogo;
-tJogo InicializarJogo(FILE *config_inicial, FILE *personagens);
+tJogo InicializarJogo(FILE *config_inicial, FILE *personagens, char * caminho);
 tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens);
 void InicializaMapaLocal(int linhas, int colunas,char mapa[linhas][colunas]);
 void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][colunas]);
@@ -89,7 +90,7 @@ void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, 
 int TerminarJogo(tJogo jogo);
 tJogo ContinuarJogo(tJogo jogo);
 char LeComando();
-int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha, int iteracao, int qtdColisoes, tColisao[]);
+int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha, int iteracao, int qtdColisoes, tColisao[], char * caminho);
 
 
 
@@ -100,9 +101,9 @@ void ValidaArquivos(char * argv, FILE *config_inicial, FILE *personagens);
 
 
 //Geracao de Arquivos
-void GerarArquivoInicializacao(tDados dados, tGalinha galinha, int linhas, int colunas, char mapa[linhas][colunas]);
+void GerarArquivoInicializacao(tDados dados, tGalinha galinha, int linhas, int colunas, char mapa[linhas][colunas], char * caminho);
 void GerarArquivoEstatisticas(tJogo jogo);
-void GerarArquivoResumo(int fimJogo, int iteracao, tGalinha galinha, tCarro carro);
+void GerarArquivoResumo(int fimJogo, int iteracao, int pista, int posX, int posY, tCarro carro, char * caminho);
 void GerarArquivoRanking(tJogo jogo);
 void OrdenaVetorColisoes(int qtdColisoes, tColisao colisoes[]);
 
@@ -121,7 +122,11 @@ int main(int argc, char * argv[]){
 
     ValidaArquivos(argv[1], config_inicial, personagens);
 
-    jogo = InicializarJogo(config_inicial, personagens);
+    jogo = InicializarJogo(config_inicial, personagens, argv[1]);
+
+    strcpy(jogo.caminho, argv[1]);
+
+    //printf("CAMINHO: %s", jogo.caminho);
 
     //printf("Inicalizou...\n");
 
@@ -131,7 +136,7 @@ int main(int argc, char * argv[]){
 
     }
 
-    GerarArquivoResumo(1, jogo.dados.iteracao, jogo.galinha, jogo.carros[0]);
+    GerarArquivoResumo(1, jogo.dados.iteracao, 0, 0, 0, jogo.carros[0], jogo.caminho); // preciso apenas do 1, de fim de jogo
     GerarArquivoEstatisticas(jogo);
     GerarArquivoRanking(jogo);
     //printf("Gerou Arquivo Ranking");
@@ -167,7 +172,11 @@ tJogo ContinuarJogo(tJogo jogo){
     
     comando = LeComando();
 
-    colidiu = ChecarColisao(comando, jogo.dados.qtdTotalCarros, jogo.carros, jogo.galinha, jogo.dados.iteracao, jogo.dados.qtdColisoes, jogo.dados.colisoes);
+    for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
+        jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
+    }
+
+    colidiu = ChecarColisao(comando, jogo.dados.qtdTotalCarros, jogoL.carros, jogo.galinha, jogo.dados.iteracao, jogo.dados.qtdColisoes, jogo.dados.colisoes, jogo.caminho);
 
     if (colidiu && (comando == 'w' || comando == 's' || comando == ' ')){
         
@@ -175,15 +184,9 @@ tJogo ContinuarJogo(tJogo jogo){
         jogoL.dados = AtualizaDadosColisao(jogo.dados, comando);
         jogoL.dados.qtdColisoes++;
 
-        for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
-            jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
-        }
     }
     else if (comando == 'w' || comando == 's' || comando == ' '){
 
-        for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
-            jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
-        }
         jogoL.galinha = AtualizaGalinha(jogo.galinha, comando, jogo.dados.qtdPistas);
         jogoL.dados = AtualizaDados(jogo.dados, comando);
         
@@ -200,26 +203,29 @@ tJogo ContinuarJogo(tJogo jogo){
 
 }
 
-int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha, int iteracao, int qtdColisoes, tColisao colisoes[qtdColisoes]){
+int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha, int iteracao, int qtdColisoes, tColisao colisoes[qtdColisoes], char * caminho){
 
     int pistaPrevGalinha = 0;
+    int posYPrevGalinha = 0;
 
     //printf("Pista da Galinha: %d\n", galinha.pista);
 
     if (comando == 'w'){
         pistaPrevGalinha = galinha.pista-1;
+        posYPrevGalinha = galinha.posY-3;
     }
     else if (comando == 's'){
         pistaPrevGalinha = galinha.pista+1;
+        posYPrevGalinha = galinha.posY+3;
     }
     else if (comando == ' '){
         pistaPrevGalinha = galinha.pista;
+        posYPrevGalinha = galinha.posY;
     }
 
     //printf("Pista prev galinha: %d\n", pistaPrevGalinha);
 
     int idxVetor;
-    int prevPosCarro;
     int posChecagemCarro;
     int posGalinha;
     int i, j;
@@ -234,38 +240,29 @@ int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha
         //printf("Passou pelo continnue");
         
         for (i = -1; i < 2; i++){
-
-            posGalinha = galinha.posX;
-
-            if (carros[idxVetor].direcao == 'D'){
-                prevPosCarro = carros[idxVetor].posX + carros[idxVetor].velocidade;
-            }
-            else if (carros[idxVetor].direcao == 'E'){
-                prevPosCarro = carros[idxVetor].posX - carros[idxVetor].velocidade;
-            }
-                                                                            // Nao precisa checar posisção prevista do carro imbecil
             for (j = -1; j < 2; j++){
-                posChecagemCarro = 0;
                 posGalinha = galinha.posX + i;
-               
                 
                 if (carros[idxVetor].direcao == 'D'){
-                    posChecagemCarro = prevPosCarro - j;
+                    posChecagemCarro = carros[idxVetor].posX + j;
                 }
                 else if (carros[idxVetor].direcao == 'E'){
-                    posChecagemCarro = prevPosCarro + j;
+                    posChecagemCarro = carros[idxVetor].posX + j;
                 }
+
                 
-                //printf("PrevPos do carro+i: %d | posGalinha+j: %d\n", prevPosCarro, posGalinha);
+                //printf("PosChecagem do carro: %d | posGalinha: %d\n", posChecagemCarro, posGalinha);
                 if (posChecagemCarro == posGalinha) {
 
                     colisoes[qtdColisoes].pista = pistaPrevGalinha;
                     colisoes[qtdColisoes].indice = carros[idxVetor].index+1;
                     colisoes[qtdColisoes].iteracao = iteracao;
 
-                    printf("PISTA COLISAO1: %d | INDICE COLISAO1: %d | ITERACAO COLISAO: %d\n", colisoes[qtdColisoes].pista, colisoes[qtdColisoes].indice = carros[idxVetor].index+1, colisoes[qtdColisoes].iteracao);
+                    //printf("PISTA COLISAO1: %d | INDICE COLISAO1: %d | ITERACAO COLISAO: %d\n", colisoes[qtdColisoes].pista, colisoes[qtdColisoes].indice = carros[idxVetor].index+1, colisoes[qtdColisoes].iteracao);
 
-                    GerarArquivoResumo(0, iteracao, galinha, carros[idxVetor]);
+                    printf("Pos Y: %d\n", posYPrevGalinha);
+
+                    GerarArquivoResumo(0, iteracao+1, pistaPrevGalinha, galinha.posX, posYPrevGalinha, carros[idxVetor], caminho);
                     return 1;
                     
                 }
@@ -555,7 +552,7 @@ tCarro LeMatrizCarro(FILE * personagens, int animacao){
 }
 
 //############## GERENCIAMENTO DO MAPA ##############
-tJogo InicializarJogo(FILE *config_inicial, FILE *personagens){
+tJogo InicializarJogo(FILE *config_inicial, FILE *personagens, char * caminho){
     
     tJogo jogo;
     
@@ -587,10 +584,7 @@ tJogo InicializarJogo(FILE *config_inicial, FILE *personagens){
 
     int temArquivoInicializacao = 0;
 
-    if (!temArquivoInicializacao) {
-        GerarArquivoInicializacao(jogo.dados, jogo.galinha, linhas, jogo.dados.colunas, mapaInicialL);
-        temArquivoInicializacao = 1;
-    }
+    GerarArquivoInicializacao(jogo.dados, jogo.galinha, linhas, jogo.dados.colunas, mapaInicialL, caminho);
 
     return jogo;
 
@@ -689,11 +683,15 @@ void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, 
 }
 
 //##############  CRIACAO DE ARQUIVOS  ##############
-void GerarArquivoInicializacao(tDados dados, tGalinha galinha, int linhas, int colunas, char mapa[linhas][colunas]){
+void GerarArquivoInicializacao(tDados dados, tGalinha galinha, int linhas, int colunas, char mapa[linhas][colunas], char * caminho){
 
     FILE * inicializacao;
 
-    inicializacao = fopen("saida/inicializacao.txt", "w"); // adicionar o / para correcao
+    char caminhoIni[1100];
+
+    sprintf(caminhoIni, "%s/saida/inicializacao.txt", caminho);
+
+    inicializacao = fopen(caminhoIni, "w"); // adicionar o / para correcao
 
     int i, j;
 
@@ -728,7 +726,11 @@ void GerarArquivoEstatisticas(tJogo jogo){
 
     FILE * estatisticas;
 
-    estatisticas = fopen("saida/estatisticas.txt", "w"); // adicionar / antes de saida para o correcao
+    char caminhoEst[1100];
+
+    sprintf(caminhoEst, "%s/saida/estatistica.txt", jogo.caminho);
+
+    estatisticas = fopen(caminhoEst, "w"); // adicionar / antes de saida para o correcao
 
     fprintf(estatisticas, "Numero total de movimentos: %d\n", jogo.dados.numMovimentos); 
     fprintf(estatisticas, "Altura maxima que a galinha chegou: %d\n", jogo.dados.alturaMax);
@@ -740,17 +742,21 @@ void GerarArquivoEstatisticas(tJogo jogo){
 
 }
 
-void GerarArquivoResumo(int fimJogo, int iteracao, tGalinha galinha, tCarro carro){
+void GerarArquivoResumo(int fimJogo, int iteracao, int pista, int posX, int posY, tCarro carro, char * caminho){
 
     FILE * resumo;
 
-    resumo = fopen("saida/resumo.txt", "a"); // adcionar a barra depois para correcao
+    char caminhoResumo[1100];
+
+    sprintf(caminhoResumo, "%s/saida/resumo.txt", caminho);
+
+    resumo = fopen(caminhoResumo, "a"); // adcionar a barra depois para correcao
 
     if (fimJogo) {
-        fprintf(resumo, "[%d] Fim de jogo.", iteracao);
+        fprintf(resumo, "[%d] Fim de jogo", iteracao);
     }
     else {
-        fprintf(resumo, "[%d] Na pista %d o carro %d atropelou a galinha na posicao (%d, %d).\n", iteracao, galinha.pista, carro.index+1, galinha.posX, galinha.posY);
+        fprintf(resumo, "[%d] Na pista %d o carro %d atropelou a galinha na posicao (%d, %d).\n", iteracao, pista, carro.index+1, posX, posY);
     }
 
     fclose(resumo);
@@ -760,14 +766,19 @@ void GerarArquivoResumo(int fimJogo, int iteracao, tGalinha galinha, tCarro carr
 void GerarArquivoRanking(tJogo jogo){
 
     FILE * ranking;
-    ranking = fopen("saida/ranking.txt", "w"); // adicionar / para correcao
+
+    char caminhoRanking[1100];
+
+    sprintf(caminhoRanking, "%s/saida/ranking.txt", jogo.caminho);
+
+    ranking = fopen(caminhoRanking, "w"); // adicionar / para correcao
 
     int i;
 
-    for (i = 0; i < jogo.dados.qtdColisoes; i++){
+    /* for (i = 0; i < jogo.dados.qtdColisoes; i++){
         printf("PISTA COLISAO: %d | INDICE COLISAO: %d | ITERACAO COLISAO %d\n", jogo.dados.colisoes[i].pista, jogo.dados.colisoes[i].indice, jogo.dados.colisoes[i].iteracao);
     }
-
+ */
     OrdenaVetorColisoes(jogo.dados.qtdColisoes, jogo.dados.colisoes);
 
     fprintf(ranking, "id_pista,id_carro,iteracao\n");
@@ -775,7 +786,7 @@ void GerarArquivoRanking(tJogo jogo){
     int cont = 0;
 
     while (cont < jogo.dados.qtdColisoes){
-        fprintf(ranking, "%d,%d,%d\n", jogo.dados.colisoes[cont].pista, jogo.dados.colisoes[cont].indice, jogo.dados.colisoes[cont].iteracao);
+        fprintf(ranking, "%d,%d,%d\n", jogo.dados.colisoes[cont].pista, jogo.dados.colisoes[cont].indice, jogo.dados.colisoes[cont].iteracao+1);
         cont++;
     }
 
