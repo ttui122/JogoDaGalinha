@@ -172,32 +172,38 @@ tJogo ContinuarJogo(tJogo jogo){
     
     comando = LeComando();
 
-    for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
-        jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
+    if (comando == 'w' || comando == 's' || comando == ' '){
+
+        for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
+            jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
+        }
+    
+        colidiu = ChecarColisao(comando, jogo.dados.qtdTotalCarros, jogoL.carros, jogo.galinha, jogo.dados.iteracao, jogo.dados.qtdColisoes, jogo.dados.colisoes, jogo.caminho);
+    
+        if (colidiu){
+            
+            jogoL.galinha = AtualizaGalinhaColisao(jogo.galinha, jogo.dados.qtdPistas);
+            jogoL.dados = AtualizaDadosColisao(jogo.dados, comando);
+            jogoL.dados.qtdColisoes++;
+    
+        }
+        else{
+    
+            jogoL.galinha = AtualizaGalinha(jogo.galinha, comando, jogo.dados.qtdPistas);
+            jogoL.dados = AtualizaDados(jogo.dados, comando);
+            
+        }
+
+        int linhas = 3 * jogo.dados.qtdPistas - 1;
+        char mapaLocal[linhas][jogo.dados.colunas];
+    
+        InicializaMapaLocal(linhas, jogoL.dados.colunas, mapaLocal);        
+        PreencherMapa(jogoL, linhas, jogoL.dados.colunas, mapaLocal);
+        ImprimeMapa(jogoL.dados.pontos, jogoL.galinha.vida, jogoL.dados.iteracao, linhas, jogoL.dados.colunas, mapaLocal);
+
     }
 
-    colidiu = ChecarColisao(comando, jogo.dados.qtdTotalCarros, jogoL.carros, jogo.galinha, jogo.dados.iteracao, jogo.dados.qtdColisoes, jogo.dados.colisoes, jogo.caminho);
 
-    if (colidiu && (comando == 'w' || comando == 's' || comando == ' ')){
-        
-        jogoL.galinha = AtualizaGalinhaColisao(jogo.galinha, jogo.dados.qtdPistas);
-        jogoL.dados = AtualizaDadosColisao(jogo.dados, comando);
-        jogoL.dados.qtdColisoes++;
-
-    }
-    else if (comando == 'w' || comando == 's' || comando == ' '){
-
-        jogoL.galinha = AtualizaGalinha(jogo.galinha, comando, jogo.dados.qtdPistas);
-        jogoL.dados = AtualizaDados(jogo.dados, comando);
-        
-    }
-
-    int linhas = 3 * jogo.dados.qtdPistas - 1;
-    char mapaLocal[linhas][jogo.dados.colunas];
-
-    InicializaMapaLocal(linhas, jogoL.dados.colunas, mapaLocal);        
-    PreencherMapa(jogoL, linhas, jogoL.dados.colunas, mapaLocal);
-    ImprimeMapa(jogoL.dados.pontos, jogoL.galinha.vida, jogoL.dados.iteracao, linhas, jogoL.dados.colunas, mapaLocal);
 
     return jogoL;
 
@@ -260,8 +266,6 @@ int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha
 
                     //printf("PISTA COLISAO1: %d | INDICE COLISAO1: %d | ITERACAO COLISAO: %d\n", colisoes[qtdColisoes].pista, colisoes[qtdColisoes].indice = carros[idxVetor].index+1, colisoes[qtdColisoes].iteracao);
 
-                    printf("Pos Y: %d\n", posYPrevGalinha);
-
                     GerarArquivoResumo(0, iteracao+1, pistaPrevGalinha, galinha.posX, posYPrevGalinha, carros[idxVetor], caminho);
                     return 1;
                     
@@ -314,7 +318,6 @@ tDados AtualizaDadosColisao(tDados dados, char comando){
     tDados dadosL = dados;
 
     dadosL.alturaMorte = dadosL.altura;
-    dadosL.alturaMinMorte = 999;
 
     if (comando == 'w') {
         dadosL.numMovimentos++;
@@ -565,7 +568,7 @@ tJogo InicializarJogo(FILE *config_inicial, FILE *personagens, char * caminho){
     jogo.dados.alturaMax = 0;
     jogo.dados.alturaMorte = 0;
     jogo.dados.alturaMaxMorte = 0;
-    jogo.dados.alturaMinMorte = 0;
+    jogo.dados.alturaMinMorte = 999;
     jogo.dados.iteracao = 0;
     jogo.dados.numMovimentos = 0;
     jogo.dados.numMovParaTras = 0;
@@ -732,6 +735,8 @@ void GerarArquivoEstatisticas(tJogo jogo){
 
     estatisticas = fopen(caminhoEst, "w"); // adicionar / antes de saida para o correcao
 
+    if (jogo.dados.alturaMinMorte == 999) jogo.dados.alturaMinMorte = 0;
+
     fprintf(estatisticas, "Numero total de movimentos: %d\n", jogo.dados.numMovimentos); 
     fprintf(estatisticas, "Altura maxima que a galinha chegou: %d\n", jogo.dados.alturaMax);
     fprintf(estatisticas, "Altura maxima que a galinha foi atropelada: %d\n", jogo.dados.alturaMaxMorte);
@@ -756,7 +761,7 @@ void GerarArquivoResumo(int fimJogo, int iteracao, int pista, int posX, int posY
         fprintf(resumo, "[%d] Fim de jogo", iteracao);
     }
     else {
-        fprintf(resumo, "[%d] Na pista %d o carro %d atropelou a galinha na posicao (%d, %d).\n", iteracao, pista, carro.index+1, posX, posY);
+        fprintf(resumo, "[%d] Na pista %d o carro %d atropelou a galinha na posicao (%d,%d).\n", iteracao, pista, carro.index+1, posX, posY);
     }
 
     fclose(resumo);
