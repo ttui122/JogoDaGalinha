@@ -156,7 +156,6 @@ int TerminarJogo(tJogo jogo){
         return 1;
     }
 
-
     return 0;
 
     }
