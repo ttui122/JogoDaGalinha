@@ -27,7 +27,7 @@ typedef struct{
     int posX;
     int index; 
     char direcao;
-    char matriz[2][3];
+    char matriz[4][2][3];
 
 } tCarro;
 tCarro LeCarro(FILE * config_inicial, int pistaAtual, tCarro carroBase, int index);
@@ -41,7 +41,6 @@ typedef struct{
     int pista;
     int indice;
     int iteracao;
-    int ordenada;
 
 } tColisao;
 
@@ -188,6 +187,17 @@ tJogo ContinuarJogo(tJogo jogo){
         colidiu = ChecarColisao(comando, jogoL.dados.qtdColisoes, jogoL.carros, jogo.dados.colisoes, jogo);
     
         if (colidiu > 0){
+
+            if (jogo.dados.animacao == 1){
+
+                int pistaColisao = colidiu/3 + 1;
+
+                for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
+                    if (jogoL.carros[i].pista != pistaColisao) continue;
+                    
+                    if (jogoL.carros[i].velocidade != 1) jogoL.carros[i].velocidade--;
+                }
+            }
             
             jogoL = AtualizaHeatmapColisao(jogoL, colidiu);
             
@@ -590,13 +600,13 @@ tCarro LeMatrizCarro(FILE * personagens, int animacao){
 
     tCarro carro;
 
-    int i, j;
+    int i, j, frame;
     char lixo;
 
     if (animacao == 0) {
         for (i = 0; i < 2; i++) {
             for (j = 0; j < 3; j++) {
-                fscanf(personagens, "%c", &carro.matriz[i][j]); // nao testei, mas possivelmente pode dar erro quando tem um " " em algum elemento do desenho
+                fscanf(personagens, "%c", &carro.matriz[0][i][j]); 
                 //printf("%c", carro.matriz[i][j]);
             }
             fscanf(personagens, "%c", &lixo); // \n
@@ -605,7 +615,18 @@ tCarro LeMatrizCarro(FILE * personagens, int animacao){
     }
     else {
 
-        printf ("### FAZER ANIMACAO ###\n");
+        for (frame = 0; frame < 4; frame++){
+            for (i = 0; i < 2; i++) {
+                for (j = 0; j < 3; j++) {
+                    fscanf(personagens, "%c", &carro.matriz[frame][i][j]); 
+                    //printf("%c", carro.matriz[i][j]);
+                }
+                fscanf(personagens, "%c", &lixo); // \n
+                //printf("%c", lixo);
+            }
+
+        }
+
     }
 
     return carro;
@@ -656,6 +677,11 @@ void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][coluna
     int pistaAtual = 1;
     int idxCarro = 0;
     int i, j;
+    int iteracao = jogo.dados.iteracao;
+    int frame;
+    
+    if (jogo.dados.animacao) frame = iteracao % 4;
+    else frame = 0;
 
     i = jogo.galinha.posY - 1;
     j = jogo.galinha.posX - 1;
@@ -682,14 +708,15 @@ void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][coluna
 
             int esquerda = ((jogo.carros[idxCarro].posX - 1) - 1 + colunas) % colunas;
             int direita  = ((jogo.carros[idxCarro].posX - 1) + 1) % colunas;
+            int centro = jogo.carros[idxCarro].posX - 1;
 
-            mapa[i][esquerda] = jogo.carros[0].matriz[0][0];
-            mapa[i][jogo.carros[idxCarro].posX - 1] = jogo.carros[0].matriz[0][1];
-            mapa[i][direita] = jogo.carros[0].matriz[0][2];
+            mapa[i][esquerda] = jogo.carros[0].matriz[frame][0][0];
+            mapa[i][centro] = jogo.carros[0].matriz[frame][0][1];
+            mapa[i][direita] = jogo.carros[0].matriz[frame][0][2];
 
-            mapa[i+1][esquerda] = jogo.carros[0].matriz[1][0];
-            mapa[i+1][jogo.carros[idxCarro].posX - 1] = jogo.carros[0].matriz[1][1];
-            mapa[i+1][direita] = jogo.carros[0].matriz[1][2];
+            mapa[i+1][esquerda] = jogo.carros[0].matriz[frame][1][0];
+            mapa[i+1][centro] = jogo.carros[0].matriz[frame][1][1];
+            mapa[i+1][direita] = jogo.carros[0].matriz[frame][1][2];
                 
         }
         
