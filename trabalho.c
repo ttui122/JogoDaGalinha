@@ -46,11 +46,11 @@ typedef struct{
 } tColisao;
 
 
+
 //Dados
 typedef struct{
 
     int qtdColisoes;
-    tColisao colisoes[20];
     int pontos;
     int iteracao;
     int numMovimentos;
@@ -61,9 +61,11 @@ typedef struct{
     int alturaMinMorte;
     int alturaMax;
     int qtdPistas;
+    int linhas;
     int qtdTotalCarros;
     int colunas;
     int animacao;
+    tColisao colisoes[20];
     
 } tDados;
 tDados LeDados(FILE * config_inicial);
@@ -85,13 +87,15 @@ typedef struct{
 tJogo InicializarJogo(FILE *config_inicial, FILE *personagens, char * caminho);
 tJogo LeArquivosJogo(FILE * config_inicial, FILE * personagens);
 void InicializaMapaLocal(int linhas, int colunas,char mapa[linhas][colunas]);
+tJogo InicializaHeatmap(tJogo jogo);
+tJogo AtualizaHeatmap(tJogo jogo);
+tJogo AtualizaHeatmapColisao(tJogo jogo, int posYColisao);
 void PreencherMapa(tJogo jogo, int linhas, int colunas, char mapa[linhas][colunas]);
 void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]);
 int TerminarJogo(tJogo jogo);
 tJogo ContinuarJogo(tJogo jogo);
 char LeComando();
-int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha, int iteracao, int qtdColisoes, tColisao[], char * caminho);
-
+int ChecarColisao(char comando, int qtdColisoes, tCarro carros[], tColisao colisoes[], tJogo jogo);
 
 
 //Validacao dos Arquivos
@@ -106,6 +110,7 @@ void GerarArquivoEstatisticas(tJogo jogo);
 void GerarArquivoResumo(int fimJogo, int iteracao, int pista, int posX, int posY, tCarro carro, char * caminho);
 void GerarArquivoRanking(tJogo jogo);
 void OrdenaVetorColisoes(int qtdColisoes, tColisao colisoes[]);
+void GerarArquivoHeatmap(tJogo jogo);
 
 
 int main(int argc, char * argv[]){
@@ -126,21 +131,22 @@ int main(int argc, char * argv[]){
 
     strcpy(jogo.caminho, argv[1]);
 
-    //printf("CAMINHO: %s", jogo.caminho);
-
     //printf("Inicalizou...\n");
 
     while (!TerminarJogo(jogo)){
 
+        //printf("Entrou no while....\n");
+
         jogo = ContinuarJogo(jogo);
+
+        //printf("Aconteceu algo....\n");
 
     }
 
     GerarArquivoResumo(1, jogo.dados.iteracao, 0, 0, 0, jogo.carros[0], jogo.caminho); // preciso apenas do 1, de fim de jogo
     GerarArquivoEstatisticas(jogo);
     GerarArquivoRanking(jogo);
-    //printf("Gerou Arquivo Ranking");
-    //GerarArquivoHeatmap();
+    GerarArquivoHeatmap(jogo);
 
 }
 
@@ -158,14 +164,16 @@ int TerminarJogo(tJogo jogo){
 
     return 0;
 
-    }
+}
 
 tJogo ContinuarJogo(tJogo jogo){
-
+    
     tJogo jogoL = jogo;
     
+    int linhas = jogo.dados.linhas;
+    int colunas = jogo.dados.colunas;
+
     int i;
-    char leitura;
     char comando;
     int colidiu;
     
@@ -177,41 +185,47 @@ tJogo ContinuarJogo(tJogo jogo){
             jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
         }
     
-        colidiu = ChecarColisao(comando, jogo.dados.qtdTotalCarros, jogoL.carros, jogo.galinha, jogo.dados.iteracao, jogo.dados.qtdColisoes, jogo.dados.colisoes, jogo.caminho);
+        colidiu = ChecarColisao(comando, jogoL.dados.qtdColisoes, jogoL.carros, jogo.dados.colisoes, jogo);
     
-        if (colidiu){
+        if (colidiu > 0){
+            
+            jogoL = AtualizaHeatmapColisao(jogoL, colidiu);
             
             jogoL.galinha = AtualizaGalinhaColisao(jogo.galinha, jogo.dados.qtdPistas);
             jogoL.dados = AtualizaDadosColisao(jogo.dados, comando);
+            jogoL = AtualizaHeatmap(jogoL);
             jogoL.dados.qtdColisoes++;
+
     
         }
         else{
     
             jogoL.galinha = AtualizaGalinha(jogo.galinha, comando, jogo.dados.qtdPistas);
             jogoL.dados = AtualizaDados(jogo.dados, comando);
+
+            jogoL = AtualizaHeatmap(jogoL);
             
         }
 
-        int linhas = 3 * jogo.dados.qtdPistas - 1;
-        char mapaLocal[linhas][jogo.dados.colunas];
+        char mapaLocal[linhas][colunas];
     
-        InicializaMapaLocal(linhas, jogoL.dados.colunas, mapaLocal);        
-        PreencherMapa(jogoL, linhas, jogoL.dados.colunas, mapaLocal);
-        ImprimeMapa(jogoL.dados.pontos, jogoL.galinha.vida, jogoL.dados.iteracao, linhas, jogoL.dados.colunas, mapaLocal);
+        InicializaMapaLocal(linhas, colunas, mapaLocal);        
+        PreencherMapa(jogoL, linhas, colunas, mapaLocal);
+        ImprimeMapa(jogoL.dados.pontos, jogoL.galinha.vida, jogoL.dados.iteracao, linhas, colunas, mapaLocal);
 
     }
-
-
 
     return jogoL;
 
 }
 
-int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha, int iteracao, int qtdColisoes, tColisao colisoes[qtdColisoes], char * caminho){
+int ChecarColisao(char comando, int qtdColisoes, tCarro carros[], tColisao colisoes[], tJogo jogo){
 
     int pistaPrevGalinha = 0;
     int posYPrevGalinha = 0;
+
+    tGalinha galinha = jogo.galinha;
+    tDados dados = jogo.dados;
 
     //printf("Pista da Galinha: %d\n", galinha.pista);
 
@@ -235,7 +249,7 @@ int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha
     int posGalinha;
     int i, j;
     
-    for (idxVetor = 0; idxVetor < qtdCarros; idxVetor++){
+    for (idxVetor = 0; idxVetor < dados.qtdTotalCarros; idxVetor++){
         //printf("Entrou no for");
         if (carros[idxVetor].pista != pistaPrevGalinha){
             //printf("Pista: %d\n", carros[idxVetor].pista);    
@@ -261,12 +275,13 @@ int ChecarColisao(char comando, int qtdCarros, tCarro carros[], tGalinha galinha
 
                     colisoes[qtdColisoes].pista = pistaPrevGalinha;
                     colisoes[qtdColisoes].indice = carros[idxVetor].index+1;
-                    colisoes[qtdColisoes].iteracao = iteracao;
+                    colisoes[qtdColisoes].iteracao = dados.iteracao;
 
                     //printf("PISTA COLISAO1: %d | INDICE COLISAO1: %d | ITERACAO COLISAO: %d\n", colisoes[qtdColisoes].pista, colisoes[qtdColisoes].indice = carros[idxVetor].index+1, colisoes[qtdColisoes].iteracao);
 
-                    GerarArquivoResumo(0, iteracao+1, pistaPrevGalinha, galinha.posX, posYPrevGalinha, carros[idxVetor], caminho);
-                    return 1;
+                    GerarArquivoResumo(0, dados.iteracao+1, pistaPrevGalinha, galinha.posX, posYPrevGalinha, carros[idxVetor], jogo.caminho);
+                    
+                    return posYPrevGalinha;
                     
                 }
             }
@@ -401,6 +416,50 @@ tCarro AtualizaCarro(tCarro carro, int colunas){
     else if (carroL.posX < 1) carroL.posX += colunas;
 
     return carroL;
+
+}
+
+tJogo AtualizaHeatmap(tJogo jogo){
+
+    tJogo jogoL = jogo;
+
+    int posXGalinha = jogo.galinha.posX;
+    int posYGalinha = jogo.galinha.posY;
+
+    int celEsquerdaX = posXGalinha - 2;
+    int celCentroX = posXGalinha - 1;
+    int celDireitaX = posXGalinha;
+
+    if (jogoL.heatmap[posYGalinha][celEsquerdaX] < 99 && jogoL.heatmap[posYGalinha][celEsquerdaX] != -1) jogoL.heatmap[posYGalinha][celEsquerdaX] += 1;
+    if (jogoL.heatmap[posYGalinha][celCentroX] < 99 && jogoL.heatmap[posYGalinha][celCentroX] != -1) jogoL.heatmap[posYGalinha][celCentroX] += 1;
+    if (jogoL.heatmap[posYGalinha][celDireitaX] < 99 && jogoL.heatmap[posYGalinha][celDireitaX] != -1) jogoL.heatmap[posYGalinha][celDireitaX] += 1;
+    
+    if (jogoL.heatmap[posYGalinha-1][celEsquerdaX] < 99 && jogoL.heatmap[posYGalinha-1][celEsquerdaX] != -1) jogoL.heatmap[posYGalinha-1][celEsquerdaX] += 1;
+    if (jogoL.heatmap[posYGalinha-1][celCentroX] < 99 && jogoL.heatmap[posYGalinha-1][celCentroX] != -1) jogoL.heatmap[posYGalinha-1][celCentroX] += 1;
+    if (jogoL.heatmap[posYGalinha-1][celDireitaX] < 99 && jogoL.heatmap[posYGalinha-1][celDireitaX] != -1) jogoL.heatmap[posYGalinha-1][celDireitaX] += 1;
+
+    return jogoL;
+
+}
+
+tJogo AtualizaHeatmapColisao(tJogo jogo, int posYColisao){
+
+    tJogo jogoL = jogo;
+
+    int i, j;
+    int linhas = jogo.dados.linhas;
+    int colunas = jogo.dados.colunas;
+
+    for (i = 0; i < linhas; i++){
+        for (j = 0; j < colunas; j++){
+
+            if (i == posYColisao - 1) jogoL.heatmap[i][j] = -1;
+            else if (i == posYColisao) jogoL.heatmap[i][j] = -1;
+
+        } 
+    }
+
+    return jogoL;
 
 }
 
@@ -562,6 +621,7 @@ tJogo InicializarJogo(FILE *config_inicial, FILE *personagens, char * caminho){
     jogo = LeArquivosJogo(config_inicial, personagens);
     //printf("Leu arquivos jogo....\n");
 
+    jogo.dados.linhas = 3 * jogo.dados.qtdPistas - 1;
     jogo.dados.qtdColisoes = 0;
     jogo.dados.altura = 2;
     jogo.dados.alturaMax = 0;
@@ -573,20 +633,20 @@ tJogo InicializarJogo(FILE *config_inicial, FILE *personagens, char * caminho){
     jogo.dados.numMovParaTras = 0;
     jogo.dados.pontos = 0;  
     
-    int linhas = 3 * jogo.dados.qtdPistas - 1;
-    char mapaInicialL[linhas][jogo.dados.colunas];
-
-    InicializaMapaLocal(linhas, jogo.dados.colunas, mapaInicialL);
-    //printf("Inicializou mapa...\n");
-    PreencherMapa(jogo, linhas, jogo.dados.colunas, mapaInicialL);
-    //printf("Preencheu mapa...\n");
-    ImprimeMapa(jogo.dados.pontos, jogo.galinha.vida, jogo.dados.iteracao, linhas, jogo.dados.colunas, mapaInicialL);
     
-    //jogo = InicializarHeatmap(jogo);
+    int linhas = jogo.dados.linhas;
+    int colunas = jogo.dados.colunas;
+    char mapaInicialL[linhas][colunas];
 
-    int temArquivoInicializacao = 0;
+    InicializaMapaLocal(linhas, colunas, mapaInicialL);
+    //printf("Inicializou mapa...\n");
+    PreencherMapa(jogo, linhas, colunas, mapaInicialL);
+    //printf("Preencheu mapa...\n");
+    ImprimeMapa(jogo.dados.pontos, jogo.galinha.vida, jogo.dados.iteracao, linhas, colunas, mapaInicialL);
+    
+    jogo = InicializaHeatmap(jogo);
 
-    GerarArquivoInicializacao(jogo.dados, jogo.galinha, linhas, jogo.dados.colunas, mapaInicialL, caminho);
+    GerarArquivoInicializacao(jogo.dados, jogo.galinha, linhas, colunas, mapaInicialL, caminho);
 
     return jogo;
 
@@ -653,6 +713,29 @@ void InicializaMapaLocal(int linhas, int colunas, char mapa[linhas][colunas]){
     }
 
 }
+
+tJogo InicializaHeatmap(tJogo jogo){
+
+    tJogo jogoL = jogo;
+
+    int i, j;
+    int linhas = jogo.dados.linhas;
+    int colunas = jogo.dados.colunas;
+
+    int posX = jogo.galinha.posX - 1;
+
+    for (i = 0; i < linhas; i++){
+        for (j = 0; j < colunas; j++){
+
+            if ((i == linhas-1 || i == linhas - 2) && (j == posX || j == posX + 1 || j == posX - 1)) jogoL.heatmap[i][j] = 1;
+            else jogoL.heatmap[i][j] = 0;
+        }
+    }
+
+    return jogoL;
+
+}
+
 void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, char mapa[linhas][colunas]){ 
     
     int i, j;
@@ -685,6 +768,32 @@ void ImprimeMapa(int pontos, int vidas, int iteracoes, int linhas, int colunas, 
 }
 
 //##############  CRIACAO DE ARQUIVOS  ##############
+void GerarArquivoHeatmap(tJogo jogo){
+
+    FILE * heatmap;
+
+    char caminhoHeatmap[1100];
+
+    sprintf(caminhoHeatmap, "%s/saida/heatmap.txt", jogo.caminho);
+
+    heatmap = fopen(caminhoHeatmap, "w");
+
+    int i, j;   
+    int linhas = jogo.dados.linhas;
+    int colunas = jogo.dados.colunas;
+
+    for (i = 0; i < linhas; i++){
+        for (j = 0; j < colunas; j++){
+            if (jogo.heatmap[i][j] == -1) fprintf(heatmap, " * ");
+            else fprintf(heatmap, "%2d ", jogo.heatmap[i][j]);
+        }
+        fprintf(heatmap, "\n");
+    }
+
+    fclose(heatmap);
+
+}
+
 void GerarArquivoInicializacao(tDados dados, tGalinha galinha, int linhas, int colunas, char mapa[linhas][colunas], char * caminho){
 
     FILE * inicializacao;
@@ -781,8 +890,8 @@ void GerarArquivoRanking(tJogo jogo){
 
     /* for (i = 0; i < jogo.dados.qtdColisoes; i++){
         printf("PISTA COLISAO: %d | INDICE COLISAO: %d | ITERACAO COLISAO %d\n", jogo.dados.colisoes[i].pista, jogo.dados.colisoes[i].indice, jogo.dados.colisoes[i].iteracao);
-    }
- */
+    } */
+
     OrdenaVetorColisoes(jogo.dados.qtdColisoes, jogo.dados.colisoes);
 
     fprintf(ranking, "id_pista,id_carro,iteracao\n");
@@ -798,56 +907,29 @@ void GerarArquivoRanking(tJogo jogo){
 
 }
 
-void OrdenaVetorColisoes(int qtdColisoes, tColisao colisoes[]){
-
-    int i, j;
-    int cont = 0;
-
+void OrdenaVetorColisoes(int qtdColisoes, tColisao colisoes[]) {
+    
+    int i, j, idxMenor;
     tColisao colisaoAuxiliar;
-    
-    
-    while (cont < qtdColisoes){
+
+    for (i = 0; i < qtdColisoes - 1; i++) {
         
-        int menorPista = 13;
+        idxMenor = i;
 
-        int menorColisao = 21;
+        for (j = i + 1; j < qtdColisoes; j++) {
 
-        for (i = 0; i < qtdColisoes; i++){
-
-            int pista = colisoes[i].pista;
-    
-            if (colisoes[i].ordenada != 1 && pista < menorPista){
-                menorColisao = i;
-                menorPista = pista;
-            } 
-            else if (pista == menorPista) {
-    
-                int indice = colisoes[i].indice;
-    
-                if (colisoes[i].ordenada != 1 && indice < colisoes[menorColisao].indice){
-                    menorColisao = i;
-                    menorPista = colisoes[i].pista;
-                }
-                else if (indice == colisoes[menorColisao].indice){
-
-                    int iteracao = colisoes[i].iteracao;
-
-                    if (colisoes[i].ordenada != 1 && iteracao > colisoes[menorColisao].iteracao){
-                        menorColisao = i;
-                    }
-                }
-            }
+            if (colisoes[j].pista < colisoes[idxMenor].pista) idxMenor = j;
+            else if (colisoes[j].pista == colisoes[idxMenor].pista && colisoes[j].indice < colisoes[idxMenor].indice) idxMenor = j;
+            
+            else if (colisoes[j].pista == colisoes[idxMenor].pista && colisoes[j].indice == colisoes[idxMenor].indice && colisoes[j].iteracao > colisoes[idxMenor].iteracao) idxMenor = j;
         }
 
-        colisoes[menorColisao].ordenada = 1;
-
-        colisaoAuxiliar = colisoes[cont];
-        colisoes[cont] = colisoes[menorColisao];
-        colisoes[menorColisao] = colisaoAuxiliar;
-
-        cont++;
-
-    }
+        if (idxMenor != i) {
+            colisaoAuxiliar = colisoes[i];
+            colisoes[i] = colisoes[idxMenor];
+            colisoes[idxMenor] = colisaoAuxiliar;
+        }
+    } 
 }
 
 //############## VALIDACAO DE ARQUIVOS ##############
