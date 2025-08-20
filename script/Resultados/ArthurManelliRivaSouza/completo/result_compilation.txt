@@ -1,0 +1,21 @@
+main.c: In function 'GerarArquivoHeatmap':
+main.c:717:32: warning: '/saida/heatmap.txt' directive writing 18 bytes into a region of size between 1 and 1100 [-Wformat-overflow=]
+  717 |     sprintf(caminhoHeatmap, "%s/saida/heatmap.txt", jogo.caminho);
+      |                                ^~~~~~~~~~~~~~~~~~
+main.c:717:5: note: 'sprintf' output between 19 and 1118 bytes into a destination of size 1100
+  717 |     sprintf(caminhoHeatmap, "%s/saida/heatmap.txt", jogo.caminho);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main.c: In function 'GerarArquivoEstatisticas':
+main.c:779:28: warning: '/saida/estatistica.txt' directive writing 22 bytes into a region of size between 1 and 1100 [-Wformat-overflow=]
+  779 |     sprintf(caminhoEst, "%s/saida/estatistica.txt", jogo.caminho);
+      |                            ^~~~~~~~~~~~~~~~~~~~~~
+main.c:779:5: note: 'sprintf' output between 23 and 1122 bytes into a destination of size 1100
+  779 |     sprintf(caminhoEst, "%s/saida/estatistica.txt", jogo.caminho);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main.c: In function 'GerarArquivoRanking':
+main.c:820:32: warning: '/saida/ranking.txt' directive writing 18 bytes into a region of size between 1 and 1100 [-Wformat-overflow=]
+  820 |     sprintf(caminhoRanking, "%s/saida/ranking.txt", jogo.caminho);
+      |                                ^~~~~~~~~~~~~~~~~~
+main.c:820:5: note: 'sprintf' output between 19 and 1118 bytes into a destination of size 1100
+  820 |     sprintf(caminhoRanking, "%s/saida/ranking.txt", jogo.caminho);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

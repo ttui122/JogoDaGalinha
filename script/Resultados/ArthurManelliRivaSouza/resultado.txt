@@ -1,0 +1,8 @@
+Arquivos Esperados Corretos: 1 de 1
+Pastas Compiladas Corretamente: 1 de 1 
+Pastas Linkadas Corretamente: 1 de 1
+Teste completo
+  - Resultados corretos: 144 de 144
+Nota de ArthurManelliRivaSouza para o teste completo: 9.00
+Nota de ArthurManelliRivaSouza: 0+(9.00)
+Nota de ArthurManelliRivaSouza: 9.00

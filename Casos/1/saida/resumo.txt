@@ -1,0 +1,34 @@
+[3] Fim de jogo[3] Fim de jogo[3] Fim de jogo[3] Fim de jogo[3] Fim de jogo[3] Fim de jogo[3] Fim de jogo[8] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[14] Na pista 2 o carro 1 atropelou a galinha na posicao (15,4).
+[27] Fim de jogo[7] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[16] Na pista 3 o carro 1 atropelou a galinha na posicao (15,7).
+[28] Fim de jogo[7] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[8] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[9] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[9] Fim de jogo[107] Fim de jogo[3] Fim de jogo[7] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[13] Na pista 2 o carro 1 atropelou a galinha na posicao (15,4).
+[26] Fim de jogo[6] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[14] Na pista 2 o carro 1 atropelou a galinha na posicao (15,4).
+[25] Fim de jogo[6] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[17] Na pista 3 o carro 1 atropelou a galinha na posicao (15,7).
+[24] Fim de jogo[8] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[17] Na pista 3 o carro 1 atropelou a galinha na posicao (15,7).
+[22] Na pista 2 o carro 2 atropelou a galinha na posicao (15,4).
+[22] Fim de jogo[3] Fim de jogo[3] Fim de jogo[3] Fim de jogo[14] Na pista 2 o carro 1 atropelou a galinha na posicao (15,4).
+[15] Na pista 3 o carro 1 atropelou a galinha na posicao (15,7).
+[1] Na pista 3 o carro 2 atropelou a galinha na posicao (24,7).
+[7] Na pista 3 o carro 1 atropelou a galinha na posicao (24,7).
+[14] Fim de jogo[7] Na pista 3 o carro 1 atropelou a galinha na posicao (24,7).
+[4] Na pista 2 o carro 2 atropelou a galinha na posicao (25,4).
+[1969078710] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[1969078711] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[-478298618] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[-478298617] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[-478298616] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[-478298616] Fim de jogo[2019410647] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[2019410652] Na pista 2 o carro 1 atropelou a galinha na posicao (15,4).
+[7] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[9] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).
+[14] Na pista 2 o carro 1 atropelou a galinha na posicao (15,4).
+[14] Fim de jogo[8] Fim de jogo[15] Na pista 2 o carro 1 atropelou a galinha na posicao (15,4).
+[8] Na pista 3 o carro 2 atropelou a galinha na posicao (15,7).

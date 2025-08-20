@@ -1,0 +1,5 @@
+Numero total de movimentos: 28
+Altura maxima que a galinha chegou: 11
+Altura maxima que a galinha foi atropelada: 14
+Altura minima que a galinha foi atropelada: 8
+Numero de movimentos na direcao oposta: 7
