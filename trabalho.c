@@ -22,6 +22,7 @@ typedef struct{
 
     int vida;
     int posX;
+    int posXInicial;
     int posY;
     int pista;
     char matriz[2][3];
@@ -158,11 +159,19 @@ tJogo ContinuarJogo(tJogo jogo){
     int i;
     char comando;
     int colidiu;
+    int parar;
     
     comando = LeComando();
-        
-    for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
-        jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
+
+    if (comando == 'p') {
+        if (parar == 0) parar = 1;
+        else if (parar == 1) parar = 0;
+    }
+
+    if (parar != 1){
+        for (i = 0; i < jogo.dados.qtdTotalCarros; i++){
+            jogoL.carros[i] = AtualizaCarro(jogo.carros[i], jogo.dados.colunas);
+        }    
     }
     
     colidiu = ChecarColisao(comando, jogoL.dados.qtdColisoes, jogoL.carros, jogo.dados.colisoes, jogo); // checa a colisao antes de atualizar a galinha
@@ -210,21 +219,36 @@ int ChecarColisao(char comando, int qtdColisoes, tCarro carros[], tColisao colis
 
     int pistaPrevGalinha = 0; // duas variaveis que representam a previsao de onde a galinha estara com a mudanca,
     int posYPrevGalinha = 0;  // nao precisando mudar o valor real dela
+    int posXPrevGalinha = 0;
 
     tGalinha galinha = jogo.galinha;
     tDados dados = jogo.dados;
 
+
     if (comando == 'w'){
         pistaPrevGalinha = galinha.pista-1;
         posYPrevGalinha = galinha.posY-3;
+        posXPrevGalinha = galinha.posX;
     }
     else if (comando == 's'){
         pistaPrevGalinha = galinha.pista+1;
         posYPrevGalinha = galinha.posY+3;
+        posXPrevGalinha = galinha.posX;
     }
     else if (comando == ' '){
         pistaPrevGalinha = galinha.pista;
         posYPrevGalinha = galinha.posY;
+        posXPrevGalinha = galinha.posX;
+    }
+    else if (comando == 'a'){
+        pistaPrevGalinha = galinha.pista;
+        posYPrevGalinha = galinha.posY;
+        posXPrevGalinha = galinha.posX-1;
+    }   
+    else if (comando == 'd'){
+        pistaPrevGalinha = galinha.pista;
+        posYPrevGalinha = galinha.posY;
+        posXPrevGalinha = galinha.posX+1;
     }
 
     int idxVetor;
@@ -238,14 +262,9 @@ int ChecarColisao(char comando, int qtdColisoes, tCarro carros[], tColisao colis
 
         for (i = -1; i < 2; i++){
             for (j = -1; j < 2; j++){                                    // loopa pelos carros na mesma pista que a pista prevista que a galinha vai estar
-                posGalinha = galinha.posX + i;                           // e checa se alguma das tres partes do carro esta na mesma posicao que alguma 
+                posGalinha = posXPrevGalinha + i;                        // e checa se alguma das tres partes do carro esta na mesma posicao que alguma 
                                                                          // das tres partes da galinha. Basta ver apenas a parte cima ou de baixo, nao precisa das duas
-                if (carros[idxVetor].direcao == 'D'){
-                    posChecagemCarro = carros[idxVetor].posX + j;
-                }
-                else if (carros[idxVetor].direcao == 'E'){
-                    posChecagemCarro = carros[idxVetor].posX + j;
-                }
+                posChecagemCarro = carros[idxVetor].posX + j;
 
                 if (posChecagemCarro == posGalinha) {
 
@@ -271,7 +290,7 @@ char LeComando(){
 
     do {    
         scanf("%c", &comando);
-    } while (comando != 'w' && comando != 's' && comando != ' '); // repete o scanf ate receber um comando que seja valido
+    } while (comando != 'w' && comando != 's' && comando != ' ' && comando != 'a' && comando != 'd' && comando != 'p'); // repete o scanf ate receber um comando que seja valido
 
     return comando;
 
@@ -290,8 +309,10 @@ tDados AtualizaDados(tDados dados, char comando){
     }  
 
     else if (comando == 's') {
-        if (dadosL.altura != 2) dadosL.altura -= 3;
-        dadosL.numMovParaTras++;
+        if (dadosL.altura != 2) {
+            dadosL.altura -= 3;
+            dadosL.numMovParaTras++;
+        } 
         dadosL.numMovimentos++;
     }
 
@@ -346,11 +367,21 @@ tGalinha AtualizaGalinha(tGalinha galinha, char comando, int ultimaPista){
             galinhaL.pista++;
         }
         break;
-        case ' ':   //comandos galinha ficar parada;
+    case ' ':   //comandos galinha ficar parada;
         galinhaL.posY = galinha.posY;
         galinhaL.pista = galinha.pista;
         break;
-        default:
+    case 'a':
+        galinhaL.posY = galinha.posY;
+        galinhaL.pista = galinha.pista;
+        galinhaL.posX--;
+        break;
+    case 'd':
+        galinhaL.posY = galinha.posY;
+        galinhaL.pista = galinha.pista;
+        galinhaL.posX++;
+        break;
+    default:
         break;
     }
     
@@ -364,6 +395,7 @@ tGalinha AtualizaColisaoGalinha(tGalinha galinha, int ultimaPista){
     galinhaL.pista = ultimaPista;
     galinhaL.vida--;
     galinhaL.posY = (3 * ultimaPista - 1) - 1;
+    galinhaL.posX = galinha.posXInicial;
 
     return galinhaL;
 
@@ -467,6 +499,7 @@ tJogo InstanciaJogo(FILE * config_inicial, FILE * personagens){
                 jogo.dados.qtdTotalCarros++;
             }
 
+            fscanf(config_inicial, "%*[^\n]");
             fscanf(config_inicial, "%c", &lixo);
             
             pistaAtual++;
@@ -502,7 +535,9 @@ tGalinha LeGalinha(FILE * config_inicial, tGalinha galinha, int pista){
 
     char letra; // G
 
-    fscanf(config_inicial, "%c %d %d", &letra, &galinhaL.posX, &galinhaL.vida);
+    fscanf(config_inicial, "%c %d %d", &letra, &galinhaL.posXInicial, &galinhaL.vida);
+
+    galinhaL.posX = galinhaL.posXInicial;
 
     return galinhaL;
 
